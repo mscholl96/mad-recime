@@ -1,0 +1,22 @@
+
+@startjson
+{
+    "ingredients": [
+        {"text": "1 (750 ml) bottle rose wine, chilled"}, 
+        {"text": "14 cup brandy"}, 
+        {"text": "14 cup orange liqueur (Cointreau, Grand Marnier)"}, 
+        {"text": "2 cups white cranberry juice"}, 
+        {"text": "1 orange, sliced"}, {"text": "1 lemon, sliced"}, 
+        {"text": "355 ml Sprite (or other citrus flavoured soft drinks)"}, {"text": "ice cube"}
+    ], 
+    "url": "http://www.food.com/recipe/pink-sangria-305385", 
+    "partition": "train", 
+    "title": "Pink Sangria", 
+    "id": "0000c79afb", 
+    "instructions": [
+        {"text": "In a pitcher, combine all the ingredients except the soft drink and ice cubes."}, 
+        {"text": "Refrigerate for 1 hour."}, 
+        {"text": "Add the soft drink and ice just before serving."}
+        ]
+}
+@endjson
