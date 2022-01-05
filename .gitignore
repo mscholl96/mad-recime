@@ -134,3 +134,6 @@ dmypy.json
 .LSOverride
 # Hidden folders
 **/.*
+
+# Images
+*.png
