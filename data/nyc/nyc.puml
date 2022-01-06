@@ -1,0 +1,48 @@
+@startjson
+{
+  "title": "Zippy Tomato Sauce",
+  "categories": [
+    "Sauces Toppings Vegetables"
+  ],
+  "servings": 8,
+  "ingredients": [
+    {
+      "quantity": 2,
+      "unit": "T",
+      "text": "Margarine Or Butter"
+    },
+    {
+      "quantity": 0.5,
+      "unit": "c",
+      "text": "Green Bell Pepper; Chopped,*"
+    },
+    {
+      "quantity": 1,
+      "unit": "ea",
+      "text": "Onion; Small, Thinly Sliced"
+    },
+    {
+      "quantity": 8,
+      "unit": "oz",
+      "text": "Tomato Sauce; 1 can"
+    },
+    {
+      "quantity": 1,
+      "unit": "c",
+      "text": "Chili Sauce"
+    },
+    {
+      "quantity": 1,
+      "unit": "t",
+      "text": "Worcestershire Sauce"
+    },
+    {
+      "quantity": 0.25,
+      "unit": "t",
+      "text": "Chili Powder"
+    }
+  ],
+  "directions": ["*    You can use canned chopped Green Chiles or Jalapenos for a hotter\\n ~------------------------------------------------------ ~----------------- \\nMelt margarine in a small saucepan. Add green peppers and onion. \\nCook and stir until the onion is tender. \\n(Note: If using the canned peppers, just cook the onion alone.) \\nStir in all the remaining ingredients and heat to boiling, stirring occasionally. \\nServe hot over patties."]
+}
+
+@endjson
