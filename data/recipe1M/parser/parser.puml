@@ -1,0 +1,43 @@
+@startuml
+start
+:Create empty list for parsed recipes;
+:Get data from json;
+repeat
+    :Create empty recipe object;
+    :Get recipe from data;
+    repeat
+        :Create empty ingredient object (amount: 1, unit: none, kind: "" );
+        :Get recipe ingredient text;
+        :Convert to lower case;
+        :Parse quantities and their unit (quantulum);
+        switch (Parsing result)
+            case ( No quantity or no result )
+                :do nothing;
+            case ( 1 unit and quantity )
+                :add unit and quantity to ingredient object;
+            case ( Several units and quantities) 
+                :add first tuple to ingredient object;
+            case ( No unit)
+                :use quantity only;
+        endswitch
+        :Remove text in parentheses;
+        :Tokenize text and extract nouns;
+        switch (List of nouns)
+            case (empty)
+                :break;
+            case (not empty)
+                :use nouns as 
+                ingredient 
+                kind string;
+        endswitch
+        :Add ingredient object to recipe;
+    repeat while (all elements processed) is (no)
+    -> yes;
+    if (recipe object contains ingredients) then (yes)
+        :Add recipe to list;
+    else (no)
+    endif
+repeat while (all recipes processed) is (no)
+-> yes;
+stop
+@enduml
