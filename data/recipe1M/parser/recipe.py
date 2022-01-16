@@ -41,9 +41,20 @@ class Recipe:
                 if ingredient.ingredient in text:
                     quants = qparse.parse(text)
                     if len(quants) != 0:
-                        ent = quants[0].unit.entity
-                        ingredient.unit = "" if quants[0].unit.name == 'dimensionless' else quants[0].unit.name
+                        entity = quants[0].unit.entity.name
                         ingredient.amount = quants[0].value
-
-                        if not ent.name in 'dimensionless, volume, mass':
-                            print(f"Determined entity: {ent.name}, from unit: {ingredient.unit} of text: {text}")
+                        unit = quants[0].unit.name
+                        # c. parses to centavo or cent, cup cubed to cubic cup
+                        if entity == 'currency' or unit == 'cubic cup':
+                          ingredient.unit = 'cup'
+                        # pinch (Prise) parses to pint inch
+                        elif unit == 'pint inch':
+                          ingredient.unit = 'pinch'
+                        # pkg. parses to peck gram
+                        elif unit == 'peck gram':
+                          ingredient.unit = 'package'
+                        # Everything else is mostly dimensionless
+                        elif unit == 'dimensionless' or not entity in 'volume, mass, length':
+                          ingredient.unit = ''
+                        else:
+                          ingredient.unit = unit
