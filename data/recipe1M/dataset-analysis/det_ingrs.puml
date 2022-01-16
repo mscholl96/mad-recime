@@ -1,0 +1,41 @@
+@startjson
+{
+    "valid": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+    ],
+    "id": "0000c79afb",
+    "ingredients": [
+    {
+        "text": "rose wine"
+    },
+    {
+        "text": "brandy"
+    },
+    {
+        "text": "orange liqueur"
+    },
+    {
+        "text": "white cranberry juice"
+    },
+    {
+        "text": "orange"
+    },
+    {
+        "text": "lemon"
+    },
+    {
+        "text": "Sprite"
+    },
+    {
+        "text": "ice cubes"
+    }
+    ]
+}
+@endjson
