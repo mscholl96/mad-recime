@@ -40,21 +40,25 @@ class Recipe:
                 text = raw['text'].lower()
                 if ingredient.ingredient in text:
                     quants = qparse.parse(text)
-                    if len(quants) != 0:
+                    if quants:
                         entity = quants[0].unit.entity.name
                         ingredient.amount = quants[0].value
                         unit = quants[0].unit.name
-                        # c. parses to centavo or cent, cup cubed to cubic cup
-                        if entity == 'currency' or unit == 'cubic cup':
-                          ingredient.unit = 'cup'
-                        # pinch (Prise) parses to pint inch
-                        elif unit == 'pint inch':
-                          ingredient.unit = 'pinch'
-                        # pkg. parses to peck gram
-                        elif unit == 'peck gram':
-                          ingredient.unit = 'package'
-                        # Everything else is mostly dimensionless
-                        elif unit == 'dimensionless' or not entity in 'volume, mass, length':
-                          ingredient.unit = ''
+                        if unit == 'dimensionless':
+                            ingredient.unit = ''
+                        elif not entity in 'volume, mass, length':
+                            # c. parses to centavo or cent, cup cubed to cubic cup
+                            if entity == 'currency' or unit == 'cubic cup':
+                                ingredient.unit = 'cup'
+                            # pinch (Prise) parses to pint inch
+                            elif unit == 'pint inch':
+                                ingredient.unit = 'pinch'
+                            # pkg. parses to peck gram
+                            elif unit == 'peck gram':
+                                ingredient.unit = 'package'
+                            else:
+                                ingredient.unit = ''
                         else:
                           ingredient.unit = unit
+                    # break because unit and amount have been found
+                    break
