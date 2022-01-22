@@ -1,17 +1,19 @@
 import torch
 import torch.nn as nn
-import pandas as pd
+import numpy as np
+from scipy import sparse
 from torch.utils.data import Dataset
 from sklearn import preprocessing
 from sklearn.model_selection import train_test_split
 
-def standardize_data(df: pd.DataFrame):
+def standardize_data(matrix: sparse.csr_matrix):
     # replace nan with -99
-    df = df.fillna(-99)
+    matrix = np.array(matrix.toarray())
+    matrix[np.isnan(matrix)] = -99
     # make all values float
-    df = df.values.reshape(-1, df.shape[1]).astype('float32')
+    matrix = matrix.reshape(-1, matrix.shape[1]).astype('float32')
     # split randomly
-    X_train, X_test = train_test_split(df, test_size=0.3, random_state=42)
+    X_train, X_test = train_test_split(matrix, test_size=0.3, random_state=42)
     # standardize values
     scaler = preprocessing.StandardScaler()
     X_train = scaler.fit_transform(X_train)
@@ -20,16 +22,10 @@ def standardize_data(df: pd.DataFrame):
     return X_train, X_test, scaler
 
 class DataBuilder(Dataset):
-    def __init__(self, df, train=True):
-        self.X_train, self.X_test, self.standardizer = standardize_data(df)
-        if train:
-            self.x = torch.from_numpy(self.X_train)
-            self.len=self.x.shape[0]
-        else:
-            self.x = torch.from_numpy(self.X_test)
-            self.len=self.x.shape[0]
-        del self.X_train
-        del self.X_test 
+    def __init__(self, matrix: sparse.csr_matrix, standardizer):
+        self.x = matrix
+        self.standardizer = standardizer
+        self.len=self.x.shape[0]
     def __getitem__(self,index):      
         return self.x[index]
     def __len__(self):
