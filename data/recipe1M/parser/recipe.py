@@ -1,6 +1,7 @@
 
 
 from quantulum3 import parser as qparse
+from pattern.text.en import singularize
 import pandas as pd
        
 class Recipe:
@@ -22,7 +23,7 @@ class Recipe:
 
     def parse_ingredients(self, raw_ingredients):
         for elem in raw_ingredients:
-            self.ingredients.append({'amount': 1, 'unit':'', 'ingredient': elem['text']})
+            self.ingredients.append({'amount': 1, 'unit':'', 'ingredient': singularize(elem['text']).lower()})
 
     def parse_instructions(self, raw_instructions):
         for elem in raw_instructions:
