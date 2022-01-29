@@ -6,9 +6,9 @@ import pandas as pd
        
 class Recipe:
     """Class to represent a single recipe"""
-    def __init__(self, id):
-        self.title = ""
+    def __init__(self, id, title):
         self.id = id
+        self.title = title
         self.ingredients = []
         self.instructions = []
 
@@ -38,18 +38,23 @@ class Recipe:
                 entity = quants[0].unit.entity.name
                 ingredient['amount'] = quants[0].value
                 unit = quants[0].unit.name
-                if not entity in 'volume, mass, length':
-                    # c. parses to centavo or cent, cup cubed to cubic cup
-                    if 'centavo' in unit or 'cent' in unit or 'cup' in unit:
-                        ingredient['unit']= 'cup'
-                    # pinch (Prise) parses to pint inch
-                    elif unit == 'pint inch':
-                        ingredient['unit']= 'pinch'
-                    # pkg. parses to peck gram
-                    elif unit == 'peck gram':
-                        ingredient['unit']= 'package'
-                    else:
-                        ingredient['unit']= ''
+                # c. parses to centavo or cent, cup cubed to cubic cup
+                if 'centavo' in unit or 'cent' in unit or 'cup' in unit:
+                    ingredient['unit'] = 'cup'
+                # pinch (Prise) parses to pint inch
+                elif unit == 'pint inch':
+                    ingredient['unit'] = 'pinch'
+                # pkg. parses to peck gram or peck, ct (carton) parses to carat
+                elif 'peck' in unit or unit == 'carat':
+                    ingredient['unit'] = 'package'
+                # parsed from "2T" (tablespoon)
+                elif unit == 'tonne':
+                    ingredient['unit'] = 'tablespoon'
+                # parsed from "inch cubed ..."
+                elif unit == 'cubic inch':
+                    ingredient['unit'] = 'inch'
+                elif not entity in 'volume, mass, length':
+                    ingredient['unit'] = ''
                 else:
-                    ingredient['unit']= unit
+                  ingredient['unit'] = unit
             i+=1
