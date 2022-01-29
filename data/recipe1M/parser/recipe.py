@@ -36,7 +36,8 @@ class Recipe:
             quants = qparse.parse(raw_ingredients[i]['text'].lower())
             if quants:
                 entity = quants[0].unit.entity.name
-                ingredient['amount'] = quants[0].value
+                # Sometimes 0 is parsed, when there is no number in text, the implicit amount is 1 in these cases
+                ingredient['amount'] = quants[0].value if quants[0].value > 0 else 1
                 unit = quants[0].unit.name
                 # c. parses to centavo or cent, cup cubed to cubic cup
                 if 'centavo' in unit or 'cent' in unit or 'cup' in unit:
