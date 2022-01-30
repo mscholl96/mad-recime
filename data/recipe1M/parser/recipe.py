@@ -39,8 +39,11 @@ class Recipe:
                 # Sometimes 0 is parsed, when there is no number in text, the implicit amount is 1 in these cases
                 ingredient['amount'] = quants[0].value if quants[0].value > 0 else 1
                 unit = quants[0].unit.name
+                # Convert to millilitre
+                if unit == 'cubic centimetre':
+                    ingredient['unit'] = 'millilitre'
                 # c. parses to centavo or cent, cup cubed to cubic cup
-                if 'centavo' in unit or 'cent' in unit or 'cup' in unit:
+                elif 'cup' in unit:
                     ingredient['unit'] = 'cup'
                 # pinch (Prise) parses to pint inch
                 elif unit == 'pint inch':
@@ -55,6 +58,8 @@ class Recipe:
                 elif unit == 'cubic inch':
                     ingredient['unit'] = 'inch'
                 elif not entity in 'volume, mass, length':
+                    if 'centavo' in unit or 'cent' in unit:
+                        ingredient['unit'] = 'cup'
                     ingredient['unit'] = ''
                 else:
                   ingredient['unit'] = unit
