@@ -1,0 +1,52 @@
+@startjson
+{
+"title":"Pink Sangria",
+    "ingredients":[
+      {
+        "amount":1.0,
+        "unit":"",
+        "ingredient":"rose wine"
+      },
+      {
+        "amount":14.0,
+        "unit":"cup",
+        "ingredient":"brandy"
+      },
+      {
+        "amount":14.0,
+        "unit":"cup",
+        "ingredient":"orange liqueur"
+      },
+      {
+        "amount":2.0,
+        "unit":"cup",
+        "ingredient":"white cranberry juice"
+      },
+      {
+        "amount":1.0,
+        "unit":"",
+        "ingredient":"orange"
+      },
+      {
+        "amount":1.0,
+        "unit":"",
+        "ingredient":"lemon"
+      },
+      {
+        "amount":355.0,
+        "unit":"millilitre",
+        "ingredient":"Sprite"
+      },
+      {
+        "amount":1.0,
+        "unit":"",
+        "ingredient":"ice cubes"
+      }
+    ],
+    "instructions":[
+      "In a pitcher, combine all the ingredients except the soft drink and ice cubes.",
+      "Refrigerate for 1 hour.",
+      "Add the soft drink and ice just before serving."
+    ]
+}
+@endjson
