@@ -1,7 +1,6 @@
 
 
 from quantulum3 import parser as qparse
-from pattern.text.en import singularize
 import pandas as pd
        
 class Recipe:
@@ -23,7 +22,7 @@ class Recipe:
 
     def parse_ingredients(self, raw_ingredients):
         for elem in raw_ingredients:
-            self.ingredients.append({'amount': 1, 'unit':'', 'ingredient': singularize(elem['text']).lower()})
+            self.ingredients.append({'amount': 1, 'unit':'', 'ingredient': elem['text'].lower()})
 
     def parse_instructions(self, raw_instructions):
         for elem in raw_instructions:
@@ -34,11 +33,21 @@ class Recipe:
         for ingredient in self.ingredients:
             # Find corresponding ingredient text in raw recipe and parse
             quants = qparse.parse(raw_ingredients[i]['text'].lower())
+            i+=1
+            
             if quants:
-                entity = quants[0].unit.entity.name
+                # Sometimes there are several quantities filtered from string. If possible select one, that is not dimensionless
+                quantity = quants[0]
+                for elem in quants[1:]:
+                    if quantity.unit.name == 'dimensionless' and elem.unit.name != 'dimensionless':
+                        quantity = elem
+                    else:
+                        # Break if non dimensionless quantity has been found
+                        break
+                entity = quantity.unit.entity.name
                 # Sometimes 0 is parsed, when there is no number in text, the implicit amount is 1 in these cases
-                ingredient['amount'] = quants[0].value if quants[0].value > 0 else 1
-                unit = quants[0].unit.name
+                ingredient['amount'] = quantity.value if quantity.value > 0 else 1
+                unit = quantity.unit.name
                 # Convert to millilitre
                 if unit == 'cubic centimetre':
                     ingredient['unit'] = 'millilitre'
@@ -58,9 +67,9 @@ class Recipe:
                 elif unit == 'cubic inch':
                     ingredient['unit'] = 'inch'
                 elif not entity in 'volume, mass, length':
+                    # c. parses to centavo or cent, cup cubed to cubic cup
                     if 'centavo' in unit or 'cent' in unit:
                         ingredient['unit'] = 'cup'
                     ingredient['unit'] = ''
                 else:
                   ingredient['unit'] = unit
-            i+=1
