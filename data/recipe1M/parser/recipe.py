@@ -18,11 +18,12 @@ class Recipe:
         return str(self)
 
     def to_dict(self):
-        return {'id': self.id, 'title': self.title, 'ingredients': pd.DataFrame(self.ingredients), 'instructions': pd.Series(self.instructions)}
+        ingredients = [{'amount': ing['amount'], 'unit': ing['unit'], 'ingredient': ing['ingredient']} for ing in self.ingredients]
+        return {'id': self.id, 'title': self.title, 'ingredients': pd.DataFrame(ingredients), 'instructions': pd.Series(self.instructions)}
 
     def parse_ingredients(self, raw_ingredients):
         for elem in raw_ingredients:
-            self.ingredients.append({'amount': 1, 'unit':'', 'ingredient': elem['text'].lower()})
+            self.ingredients.append({'amount': 1, 'unit':'', 'ingredient': elem['text'].lower(), 'replaceable': True})
 
     def parse_instructions(self, raw_instructions):
         for elem in raw_instructions:
@@ -41,6 +42,7 @@ class Recipe:
                 for elem in quants[1:]:
                     if quantity.unit.name == 'dimensionless' and elem.unit.name != 'dimensionless':
                         quantity = elem
+                        ingredient['replaceable'] = False # Here the amount is not allowed to be replaced in post processing!
                     else:
                         # Break if non dimensionless quantity has been found
                         break
