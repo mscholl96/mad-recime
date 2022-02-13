@@ -22,12 +22,14 @@ def standardize_data(matrix: sparse.csr_matrix):
     return X_train, X_test, scaler
 
 class DataBuilder(Dataset):
-    def __init__(self, matrix: sparse.csr_matrix, standardizer):
-        self.x = matrix
+    def __init__(self, matrix: sparse.csr_matrix, matrix_str,standardizer):
+        assert(matrix.shape[0] == len(matrix_str))
+        self.x = torch.tensor(matrix)
+        self.x_str = torch.tensor(matrix_str.values)
         self.standardizer = standardizer
         self.len=self.x.shape[0]
     def __getitem__(self,index):      
-        return self.x[index]
+        return self.x[index], self.x_str[index]
     def __len__(self):
         return self.len
 
