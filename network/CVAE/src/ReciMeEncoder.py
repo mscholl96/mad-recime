@@ -21,23 +21,6 @@ class _ReLUBatchNormLinear(nn.Module):
     def forward(self, x):
         return self.layer(x)
 
-def preProcessInput(ds: pd.Series):
-    assert('ingredients' == ds.name)
-    assert 'amount' in ds.iloc[0].columns, "Column Amount not found in Dataframe"
-    assert 'unit' in ds.iloc[0].columns, "Column Unit not found in Dataframe"
-    assert 'ingredient' in ds.iloc[0].columns, "Column Ingredient not found in Dataframe"
-
-    ingredientDict = {}
-
-    for df in ds:
-        print(df.columns)
-        lenDict = len(ingredientDict)
-        ingr = df['ingredient']
-        print(ingr)
-        ingredientDict.setdefault(ingr, lenDict)
-
-    return ingredientDict
-
 
 @dataclass
 class RmeParameters:

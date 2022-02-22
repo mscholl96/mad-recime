@@ -6,7 +6,7 @@ from torch.utils.data import Dataset
 from sklearn import preprocessing
 from sklearn.model_selection import train_test_split
 
-def standardize_data(matrix: sparse.csr_matrix):
+def standardize_data(matrix):
     # replace nan with -99
     #matrix = np.array(matrix.toarray())
     #matrix[np.isnan(matrix)] = -99
@@ -22,14 +22,12 @@ def standardize_data(matrix: sparse.csr_matrix):
     return X_train, X_test, scaler
 
 class DataBuilder(Dataset):
-    def __init__(self, matrix: sparse.csr_matrix, matrix_str,standardizer):
-        assert(matrix.shape[0] == len(matrix_str))
-        self.x = torch.tensor(matrix)
-        self.x_str = torch.tensor(matrix_str.values)
+    def __init__(self, matrix, standardizer):
+        self.x = torch.FloatTensor(matrix)
         self.standardizer = standardizer
         self.len=self.x.shape[0]
     def __getitem__(self,index):      
-        return self.x[index], self.x_str[index]
+        return self.x[index]
     def __len__(self):
         return self.len
 
@@ -64,7 +62,7 @@ def sparse_batch_collate(batch:list) -> torch.FloatTensor:
 class CustomLoss(nn.Module):
     def __init__(self):
         super(CustomLoss, self).__init__()
-        self.mse_loss = nn.MSELoss(reduction="sum")
+        self.mse_loss = nn.MSELoss()
     
     def forward(self, x_recon, x, mu, logvar):
         loss_MSE = self.mse_loss(x_recon, x)

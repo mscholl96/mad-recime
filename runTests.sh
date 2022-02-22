@@ -1,5 +1,5 @@
-coverage run -m pytest
-coverage-badge -o doc/coverage.svg
+coverage run -m pytest -v --db monitoring.db
+coverage-badge -o doc/coverage.svg -f
 coverage html 
 echo "Open Report [Y/n]" 
 read input

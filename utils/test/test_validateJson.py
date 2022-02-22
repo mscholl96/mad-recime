@@ -1,7 +1,8 @@
 import json
+import pytest
 from utils import validateJson
 
-
+@pytest.mark.monitor_skip_test
 def test_validateJson_positive():
     testJson = """
     [
@@ -68,7 +69,7 @@ def test_validateJson_positive():
     jsonData = json.loads(testJson)
     assert validateJson.validateRecimeJson(jsonData) == True
 
-
+@pytest.mark.monitor_skip_test
 def test_validateJson_negative():
     testJson = """
     [
