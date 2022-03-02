@@ -1,0 +1,29 @@
+@startuml
+start
+:Read ingredients to ingredient data frame;
+:Read complete recipes to recipe data frame;
+:Remove recipes with more than 20 ingredients;
+:Remove recipes with more than 30 instructions;
+:Remove recipes with invalid ingredient data;
+:Add ingredient data frame to recipe data frame;
+:Load parsed amounts from food.com;
+repeat
+    :Get recipe from recipe data frame;
+    if (recipe is from food.com) then (yes)
+        if (recipe id is in parsed amounts) then (yes)
+        else (no)
+            :remove recipe from data frame;
+            :continue;
+        endif
+    else (no)
+    endif
+    :Remove empty ingredients from recipe;
+    if (lenghths of original and parsed ingredients match) then (yes)
+        :Replace fractions in ingredients with float;
+        :Replace mixed fractions in ingredients with float;
+    else (no)
+        :remove recipe from data frame;
+    endif
+repeat while (all elements in ingredient list processed) is (no) not (yes)
+stop
+@enduml
