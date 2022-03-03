@@ -14,7 +14,7 @@ class _ReLUBatchNormLinear(nn.Module):
 
         self.layer = nn.Sequential(
             nn.Linear(input_dim, output_dim),
-            nn.BatchNorm1d(output_dim),
+            #nn.BatchNorm1d(output_dim),
             nn.ReLU(),
         )
 
