@@ -30,8 +30,15 @@ class ReciMeEncoder_unstacked(nn.Module):
 
         self.logvarStack = nn.Linear(parameters.latentDimension, parameters.latentDimension)
 
-        self.decoderStack = nn.Sequential(
+        self.samplingStack = nn.Sequential(
+            nn.Linear(parameters.latentDimension, parameters.latentDimension),
+            nn.ReLU(),
             nn.Linear(parameters.latentDimension, parameters.reductionLayer_1),
+            nn.ReLU()
+        )
+
+        self.decoderStack = nn.Sequential(
+            nn.Linear(parameters.reductionLayer_1, parameters.reductionLayer_1),
             nn.ReLU(),
             nn.Linear(parameters.reductionLayer_1, parameters.inputLayer),
             nn.ReLU(),
@@ -40,7 +47,7 @@ class ReciMeEncoder_unstacked(nn.Module):
         )
 
 
-    def encode(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def encode(self, x):
         latent_space = self.encoderStack(x)
         mu = self.muStack(latent_space)
         logvar = self.logvarStack(latent_space)
@@ -55,7 +62,7 @@ class ReciMeEncoder_unstacked(nn.Module):
             return mu
 
     def decode(self, z):
-        return self.decoderStack(z)
+        return self.decoderStack(self.samplingStack(z))
 
     def forward(self, x):
         mu, logvar = self.encode(x)
