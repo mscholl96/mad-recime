@@ -1,0 +1,45 @@
+@startuml architecture
+
+' Diagram style
+skinparam DefaultTextAlignment center
+skinparam rectangle<<helper>> {
+	BackgroundColor #9999a1
+}
+sprite $Network jar:archimate/network
+sprite $Object jar:archimate/application-data-object
+sprite $Component jar:archimate/application-component
+
+' Components
+rectangle "ReciMe application" {
+    rectangle "**Conditional Variational**\n**Autoencoder Network**" as cvae <<$Network>>#APPLICATION
+    rectangle "List of ingredients"  as Ingredients <<$Object>>#BUSINESS
+    rectangle "Generated Recipe"  as recipe <<$Object>>#BUSINESS
+    rectangle "List of instructions"  as instructions <<$Object>>#BUSINESS
+    rectangle "Title"  as rtitle <<$Object>>#BUSINESS
+    rectangle "**Title generating**\n**LSTM**" as tlstm <<$Network>>#APPLICATION
+    rectangle "**Instruction generating**\n**LSTM**" as ilstm <<$Network>>#APPLICATION
+    rectangle "Ingredient input" as input <<$Object>>#BUSINESS
+}
+rectangle "Data preparation" {
+    rectangle "Training data" as train <<$Object>>
+    rectangle "Recipe1M data" as raw <<$Object>>
+    rectangle "**Data parser**" as parser <<$Component>><<helper>>
+}
+
+' Connections
+raw .right.> parser
+parser .down.> train
+train .right.> cvae
+train .right.> ilstm
+train .right.> tlstm
+input -down-> cvae
+cvae -right-> Ingredients
+Ingredients -down-> tlstm
+Ingredients -down-> ilstm
+rtitle -down-> recipe
+Ingredients -> recipe
+instructions -> recipe
+tlstm -down-> rtitle
+ilstm -right-> instructions
+
+@enduml
