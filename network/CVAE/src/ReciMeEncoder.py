@@ -14,7 +14,7 @@ class _ReLUBatchNormLinear(nn.Module):
 
         self.layer = nn.Sequential(
             nn.Linear(input_dim, output_dim),
-            #nn.BatchNorm1d(output_dim),
+            nn.BatchNorm1d(output_dim),
             nn.ReLU(),
         )
 
@@ -54,8 +54,7 @@ class ReciMeEncoder(nn.Module):
             _ReLUBatchNormLinear(parameters.latentDimension, parameters.reductionLayer_2),
             _ReLUBatchNormLinear(parameters.reductionLayer_2, parameters.reductionLayer_1),
             _ReLUBatchNormLinear(parameters.reductionLayer_1, parameters.inputLayer),
-            nn.Linear(parameters.inputLayer, parameters.inputDimension),
-            nn.Sigmoid()
+            nn.Linear(parameters.inputLayer, parameters.inputDimension)
         )
 
 

@@ -19,10 +19,13 @@ class ReciMeEncoder_unstacked(nn.Module):
  
         self.encoderStack = nn.Sequential(
             nn.Linear(parameters.inputDimension, parameters.inputLayer),
+            nn.BatchNorm1d(parameters.inputLayer),
             nn.ReLU(),
             nn.Linear(parameters.inputLayer, parameters.reductionLayer_1),
+            nn.BatchNorm1d(parameters.reductionLayer_1),
             nn.ReLU(),
             nn.Linear(parameters.reductionLayer_1, parameters.latentDimension),
+            nn.BatchNorm1d(parameters.latentDimension),
             nn.ReLU()
         )
 
@@ -32,18 +35,22 @@ class ReciMeEncoder_unstacked(nn.Module):
 
         self.samplingStack = nn.Sequential(
             nn.Linear(parameters.latentDimension, parameters.latentDimension),
+            nn.BatchNorm1d(parameters.latentDimension),
             nn.ReLU(),
             nn.Linear(parameters.latentDimension, parameters.reductionLayer_1),
+            nn.BatchNorm1d(parameters.reductionLayer_1),
             nn.ReLU()
         )
 
         self.decoderStack = nn.Sequential(
             nn.Linear(parameters.reductionLayer_1, parameters.reductionLayer_1),
+            nn.BatchNorm1d(parameters.reductionLayer_1),
             nn.ReLU(),
             nn.Linear(parameters.reductionLayer_1, parameters.inputLayer),
+            nn.BatchNorm1d(parameters.inputLayer),
             nn.ReLU(),
             nn.Linear(parameters.inputLayer, parameters.inputDimension),
-            nn.Sigmoid()
+            nn.BatchNorm1d(parameters.inputDimension)
         )
 
 
