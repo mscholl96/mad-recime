@@ -2,60 +2,49 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
-import pandas as pd
-import numpy as np
-
-from typing import Tuple
-from dataclasses import dataclass
+from typing import List, Tuple
 
 class _ReLUBatchNormLinear(nn.Module):
-    def __init__(self, input_dim, output_dim):
+    def __init__(self, input_dim, output_dim, useBatchNorm = True, actFunc = nn.ReLU()):
         super(_ReLUBatchNormLinear, self).__init__()
 
-        self.layer = nn.Sequential(
-            nn.Linear(input_dim, output_dim),
-            nn.BatchNorm1d(output_dim),
-            nn.ReLU(),
-        )
+        layers = []
+        layers.append(nn.Linear(input_dim, output_dim))
+        if useBatchNorm:
+            layers.append(nn.BatchNorm1d(output_dim))
+        if actFunc:
+            layers.append(actFunc)
+
+        self.layer = nn.Sequential(*layers)
 
     def forward(self, x):
         return self.layer(x)
-
-
-@dataclass
-class RmeParameters:
-    inputDimension: int
-    inputLayer: int = 4096
-    reductionLayer_1: int = 2048
-    reductionLayer_2: int = 1024
-    latentDimension: int = 512
-
 class ReciMeEncoder(nn.Module):
     """ ReciMeEncoder
     Variational Autoencoder specifically adopted for the ReciMe Dataset.
 
     Provides additional helper functions to preprocess a given dataset or to iterate over the batches.
     """
-    def __init__(self, parameters: RmeParameters) -> None:
+    def __init__(self, parameters, useBatchNorm = True, actFunc = nn.ReLU(), outFunc = nn.Tanh()) -> None:
         super(ReciMeEncoder, self).__init__()
- 
-        self.encoderStack = nn.Sequential(
-            _ReLUBatchNormLinear(parameters.inputDimension, parameters.inputLayer),
-            _ReLUBatchNormLinear(parameters.inputLayer, parameters.reductionLayer_1),
-            _ReLUBatchNormLinear(parameters.reductionLayer_1, parameters.reductionLayer_2),
-            _ReLUBatchNormLinear(parameters.reductionLayer_2, parameters.latentDimension)
-        )
 
-        self.muStack = nn.Linear(parameters.latentDimension, parameters.latentDimension)
+        encoderList = []
+        for index in range(1,len(parameters)):
+            encoderList.append(_ReLUBatchNormLinear(parameters[index-1], parameters[index], useBatchNorm, actFunc))
+        self.encoderStack = nn.Sequential(*encoderList) 
 
-        self.logvarStack = nn.Linear(parameters.latentDimension, parameters.latentDimension)
+        self.muStack = nn.Linear(parameters[-1], parameters[-1])
 
-        self.decoderStack = nn.Sequential(
-            _ReLUBatchNormLinear(parameters.latentDimension, parameters.reductionLayer_2),
-            _ReLUBatchNormLinear(parameters.reductionLayer_2, parameters.reductionLayer_1),
-            _ReLUBatchNormLinear(parameters.reductionLayer_1, parameters.inputLayer),
-            nn.Linear(parameters.inputLayer, parameters.inputDimension)
-        )
+        self.logvarStack = nn.Linear(parameters[-1], parameters[-1])
+
+        decoderList = []
+        index = 0
+        for index in range(len(parameters)-1, 0, -1):
+            if index > 1:
+                decoderList.append(_ReLUBatchNormLinear(parameters[index], parameters[index-1], useBatchNorm, actFunc))
+            else:
+                decoderList.append(_ReLUBatchNormLinear(parameters[index], parameters[index-1], useBatchNorm, outFunc))
+        self.decoderStack = nn.Sequential(*decoderList)
 
 
     def __encode(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -65,9 +54,12 @@ class ReciMeEncoder(nn.Module):
         return mu, logvar
 
     def __reparametrize(self, mu: torch.Tensor, logvar: torch.Tensor) -> Variable:
-        std = logvar.mul(0.5).exp_()
-        eps = Variable(std.data.new(std.size()).normal_())
-        return eps.mul(std).add_(mu)
+        if self.training:
+            std = logvar.mul(0.5).exp_()
+            eps = Variable(std.data.new(std.size()).normal_())
+            return eps.mul(std).add_(mu)
+        else:
+            return mu
 
     def decode(self, z: Variable) -> torch.Tensor:
         return self.decoderStack(z)
