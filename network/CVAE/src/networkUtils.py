@@ -1,5 +1,24 @@
+import imp
 import torch
 import torch.nn as nn
+import pandas as pd
+from ReciMePreprocessor import ReciMePreprocessor
+
+class DataBuilder(torch.utils.data.Dataset):
+    def __init__(self, dataset, preProcessor: ReciMePreprocessor) -> None:
+        super().__init__()
+        self.data = dataset
+        self.len = len(dataset)
+        self.preProcessor = preProcessor
+
+    def __len__(self):
+        return self.len
+
+    def __getitem__(self, index):
+        processedData = self.preProcessor.preProcessInput(pd.Series(self.data.iloc[index]))
+        normalizedData = self.preProcessor.normalizeData(processedData)
+        return normalizedData[0]
+
 
 class CustomLoss(nn.Module):
     def __init__(self):
