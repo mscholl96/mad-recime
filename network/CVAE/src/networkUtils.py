@@ -2,10 +2,8 @@ import imp
 import torch
 import torch.nn as nn
 import pandas as pd
-from ReciMePreprocessor import ReciMePreprocessor
-
 class DataBuilder(torch.utils.data.Dataset):
-    def __init__(self, dataset, preProcessor: ReciMePreprocessor) -> None:
+    def __init__(self, dataset, preProcessor) -> None:
         super().__init__()
         self.data = dataset
         self.len = len(dataset)
@@ -15,9 +13,17 @@ class DataBuilder(torch.utils.data.Dataset):
         return self.len
 
     def __getitem__(self, index):
-        processedData = self.preProcessor.preProcessInput(pd.Series(self.data.iloc[index]))
+        return self.data.iloc[index]
+
+    def customCollate(self, batch):
+        unzippedBatch = []
+        for elem in batch:
+            unzippedBatch.append(elem)
+        seriesConcat = pd.Series(unzippedBatch, name='ingredients')
+        processedData = self.preProcessor.preProcessInput(seriesConcat)
         normalizedData = self.preProcessor.normalizeData(processedData)
-        return normalizedData[0]
+        return torch.FloatTensor(normalizedData)
+
 
 
 class CustomLoss(nn.Module):

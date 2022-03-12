@@ -23,35 +23,8 @@ class ReciMePreprocessor:
         self.emb = torch.nn.Embedding.from_pretrained(weights)
 
         self.normalizer_amounts = MinMaxScaler((-1, 1))
-        self.normalizer_amounts.data_min_ = np.array([1e-12] * 20)
-        self.normalizer_amounts.data_max_ = np.array([10000.0] * 20)
-        self.normalizer_amounts.scale_ = (
-            self.normalizer_amounts.feature_range[1]
-            - self.normalizer_amounts.feature_range[0]
-        ) / (self.normalizer_amounts.data_max_ - self.normalizer_amounts.data_min_)
-        self.normalizer_amounts.min_ = (
-            self.normalizer_amounts.feature_range[0]
-            - self.normalizer_amounts.data_min_ * self.normalizer_amounts.scale_
-        )
         self.normalizer_units = MinMaxScaler((-1, 1))
         self.normalizer_ingredients = MinMaxScaler((-1, 1))
-        self.normalizer_ingredients.data_min_ = np.array(
-            [-0.2968] * (data.shape[1] - len(self.unitDict) * 20 + 20)
-        )
-        self.normalizer_ingredients.data_max_ = np.array(
-            [0.3292] * (data.shape[1] - len(self.unitDict) * 20 + 20)
-        )
-        self.normalizer_ingredients.scale_ = (
-            self.normalizer_ingredients.feature_range[1]
-            - self.normalizer_ingredients.feature_range[0]
-        ) / (
-            self.normalizer_ingredients.data_max_
-            - self.normalizer_ingredients.data_min_
-        )
-        self.normalizer_ingredients.min_ = (
-            self.normalizer_ingredients.feature_range[0]
-            - self.normalizer_ingredients.data_min_ * self.normalizer_ingredients.scale_
-        )
 
     def oneHotEncoding(self, values: List[str], dictionary: dict) -> np.ndarray:
         embedding = np.zeros((20, len(dictionary)))
@@ -65,6 +38,16 @@ class ReciMePreprocessor:
         data = np.array(data)
         # Those values were determined by iterating the whole dataset
         # without conversion and getting the min/max over the whole dataset
+        self.normalizer_amounts.data_min_ = np.array([1e-12] * 20)
+        self.normalizer_amounts.data_max_ = np.array([10000.0] * 20)
+        self.normalizer_amounts.scale_ = (
+            self.normalizer_amounts.feature_range[1]
+            - self.normalizer_amounts.feature_range[0]
+        ) / (self.normalizer_amounts.data_max_ - self.normalizer_amounts.data_min_)
+        self.normalizer_amounts.min_ = (
+            self.normalizer_amounts.feature_range[0]
+            - self.normalizer_amounts.data_min_ * self.normalizer_amounts.scale_
+        )
         amounts = self.normalizer_amounts.transform(data[:, :20])
         # Units do not need a feature range since they are one hot encoded (range 0:1)
         units = self.normalizer_units.fit_transform(
@@ -72,6 +55,19 @@ class ReciMePreprocessor:
         )
         # Those values were determined by iterating the whole dataset
         # without conversion and getting the min/max over the whole dataset
+        self.normalizer_ingredients.data_min_ = np.array([-0.2968] * 6000)
+        self.normalizer_ingredients.data_max_ = np.array([0.3292] * 6000)
+        self.normalizer_ingredients.scale_ = (
+            self.normalizer_ingredients.feature_range[1]
+            - self.normalizer_ingredients.feature_range[0]
+        ) / (
+            self.normalizer_ingredients.data_max_
+            - self.normalizer_ingredients.data_min_
+        )
+        self.normalizer_ingredients.min_ = (
+            self.normalizer_ingredients.feature_range[0]
+            - self.normalizer_ingredients.data_min_ * self.normalizer_ingredients.scale_
+        )
         ingredients = self.normalizer_ingredients.transform(
             data[:, len(self.unitDict) * 20 + 20 :]
         )
