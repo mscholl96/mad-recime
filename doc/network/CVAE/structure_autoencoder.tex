@@ -1,0 +1,30 @@
+\documentclass[tikz, border=5, convert]{standalone}
+
+\begin{document}
+
+\begin{tikzpicture}[>=stealth]
+
+\foreach \y in {0,...,6}
+	\foreach \x in {0}
+	\draw [cyan] (\x, \y) -- (\x+1, \y) -- (\x+1, \y+1) -- (\x,\y+1) -- cycle;
+\node [cyan, align=center] at (0.5,-1) {Input Vector\\$i$};
+
+\draw (1.5,0) -- (5.5,2) -- (5.5,5) -- (1.5,7) -- cycle;
+\node [align=center] at (3.5,3.5) {encoder\\$e(x)$};
+
+\foreach \y in {2,...,4}
+	\foreach \x in {6}
+	\draw [olive] (\x, \y) -- (\x+1, \y) -- (\x+1, \y+1) -- (\x,\y+1) -- cycle;
+\node [olive, align=center] at (6.5,-1) {Latent Space\\$e(i)$};
+	
+\draw (7.5, 2) -- (11.5, 0) -- (11.5, 7) -- (7.5, 5) -- cycle;
+\node [align=center] at (9.5,3.5) {decoder\\$d(x)$};
+
+\foreach \y in {0,...,6}
+	\foreach \x in {12}
+	\draw [orange] (\x, \y) -- (\x+1, \y) -- (\x+1, \y+1) -- (\x,\y+1) -- cycle;
+\node [orange, align=center] at (12.5,-1) {Output Vector\\$d(e(i))$};	
+
+\end{tikzpicture}
+
+\end{document}

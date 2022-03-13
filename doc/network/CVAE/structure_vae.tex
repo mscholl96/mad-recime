@@ -1,0 +1,51 @@
+\documentclass[tikz, border=5, convert]{standalone}
+
+\begin{document}
+
+\begin{tikzpicture}[>=stealth]
+
+\foreach \y in {0,...,6}
+	\foreach \x in {0}
+	\draw [cyan] (\x, \y) -- (\x+1, \y) -- (\x+1, \y+1) -- (\x,\y+1) -- cycle;
+\node [cyan, align=center] at (0.5,-1) {Input Vector\\$i$};
+
+\draw (1.5,0) -- (5.5,2) -- (5.5,5) -- (1.5,7) -- cycle;
+\node [align=center] at (3.5,3.5) {encoder\\$e(x)$};
+
+\draw [purple] (5.5,2) -- (8.5,4) -- (8.5,7) -- (5.5,5) -- cycle;
+\node [purple, align=center] at (7.5,5) {$h(x)$};
+\draw [violet] (5.5,2) -- (8.5,0) -- (8.5,3) -- (5.5,5) -- cycle;
+\node [violet, align=center] at (7.5,2) {$g(x)$};
+
+\foreach \y in {4,...,6}
+	\foreach \x in {9}
+	\draw [purple] (\x, \y) -- (\x+1, \y) -- (\x+1, \y+1) -- (\x,\y+1) -- cycle;
+\node [purple, align=center] at (9.5,8) {Latent Space $\mu$\\$h(e(i))$};
+\draw [purple,->] (10.5, 5.5) -- (13.5, 4.5);
+
+\node [gray, align=center] at (11,3.5) {$\zeta$\\$N(0,1)$};
+\draw [gray, ->] (12,3.5) -- (13.5, 3.5) ;
+
+\foreach \y in {0,...,2}
+	\foreach \x in {9}
+	\draw [violet] (\x, \y) -- (\x+1, \y) -- (\x+1, \y+1) -- (\x,\y+1) -- cycle;
+\node [violet, align=center] at (9.5,-1) {Latent Space $\log(\sigma)$\\$g(e(i))$};
+\draw [violet,->] (10.5, 1.5) -- (13.5, 2.5);
+
+	
+\foreach \y in {2,...,4}
+	\foreach \x in {14}
+	\draw [olive] (\x, \y) -- (\x+1, \y) -- (\x+1, \y+1) -- (\x,\y+1) -- cycle;
+\node [olive, align=center] at (14.5,-1) {Latent Space $z$\\$\sigma\cdot \zeta+\mu$};	
+
+\draw (15.5, 2) -- (19.5, 0) -- (19.5, 7) -- (15.5, 5) -- cycle;
+\node [align=center] at (17.5,3.5) {decoder\\$d(x)$};
+
+\foreach \y in {0,...,6}
+	\foreach \x in {20}
+	\draw [orange] (\x, \y) -- (\x+1, \y) -- (\x+1, \y+1) -- (\x,\y+1) -- cycle;
+\node [orange, align=center] at (20.5,-1) {Output Vector\\$d(z)$};	
+
+\end{tikzpicture}
+
+\end{document}
