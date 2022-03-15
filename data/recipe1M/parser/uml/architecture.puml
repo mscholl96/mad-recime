@@ -1,0 +1,38 @@
+@startuml parsing-architecture
+
+' Diagram style
+skinparam DefaultTextAlignment center
+
+sprite $Object jar:archimate/application-data-object
+sprite $Component jar:archimate/application-component
+sprite $Web jar:archimate/technology-artifact
+
+' Components
+rectangle "Food.com"  as web <<$Web>>
+
+rectangle "Recipe1M+ data" {
+    rectangle "det_ingrs.json"  as ingrs <<$Object>>
+    rectangle "   layer1.json   "  as layer1 <<$Object>>
+}
+rectangle "Data preparation" {
+    rectangle "**Web scraper**" as scraper <<$Component>>#APPLICATION
+    rectangle "Food.com amounts" as amounts <<$Object>>#BUSINESS
+    rectangle "**Data parser**" as parser <<$Component>>#APPLICATION
+}
+
+rectangle "Training data" as data <<$Object>>#BUSINESS
+
+' Connections
+web --> scraper
+layer1 -right-> scraper
+layer1 -right-> parser
+ingrs -right-> parser
+
+scraper -right-> amounts
+amounts --> parser
+parser --> data
+
+' Structure
+layer1 -[hidden]down-> ingrs
+
+@enduml
