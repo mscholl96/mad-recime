@@ -39,13 +39,12 @@ class Recipe:
             if quants:
                 # Sometimes there are several quantities filtered from string. If possible select one, that is not dimensionless
                 quantity = quants[0]
-                for elem in quants[1:]:
-                    if quantity.unit.name == 'dimensionless' and elem.unit.name != 'dimensionless':
-                        quantity = elem
-                        ingredient['replaceable'] = False # Here the amount is not allowed to be replaced in post processing!
-                    else:
-                        # Break if non dimensionless quantity has been found
-                        break
+                if quantity.unit.name == 'dimensionless':
+                    for elem in quants[1:]:
+                        if elem.unit.name != 'dimensionless':
+                            quantity = elem
+                            ingredient['replaceable'] = False # Here the amount is not allowed to be replaced in post processing!
+                            break
                 entity = quantity.unit.entity.name
                 # Sometimes 0 is parsed, when there is no number in text, the implicit amount is 1 in these cases
                 ingredient['amount'] = quantity.value if quantity.value > 0 else 1
@@ -72,6 +71,7 @@ class Recipe:
                     # c. parses to centavo or cent, cup cubed to cubic cup
                     if 'centavo' in unit or 'cent' in unit:
                         ingredient['unit'] = 'cup'
-                    ingredient['unit'] = ''
+                    else:
+                        ingredient['unit'] = ''
                 else:
-                  ingredient['unit'] = unit
+                    ingredient['unit'] = unit

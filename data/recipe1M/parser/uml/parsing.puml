@@ -1,0 +1,47 @@
+@startuml parsing
+
+' Diagram style
+skinparam DefaultTextAlignment center
+
+sprite $Object jar:archimate/application-data-object
+sprite $Component jar:archimate/application-component
+sprite $Web jar:archimate/technology-artifact
+
+' Components
+
+rectangle "Recipe1M+ data" {
+    rectangle "det_ingrs.json"  as ingrs <<$Object>>
+    rectangle "   layer1.json   "  as layer1 <<$Object>>
+}
+
+rectangle "**Preprocessing**" as pre <<$Component>>#APPLICATION
+rectangle "Food.com amounts" as amounts <<$Object>>
+rectangle "Combined and cleaned data" as comb <<$Object>>#BUSINESS
+
+rectangle "Parser" {
+
+    rectangle "**Parsing**" as quantulum <<$Component>>#APPLICATION
+    rectangle "Structured data" as struct <<$Object>>#BUSINESS
+    rectangle "**Postprocessing**" as post <<$Component>>#APPLICATION
+}
+
+rectangle "Training data" as data <<$Object>>#BUSINESS
+
+' Connections
+layer1 -right-> pre
+ingrs -right-> pre
+
+pre -right-> comb
+comb -down-> quantulum : " element-wise"
+quantulum -right-> struct
+struct -right-> post
+amounts -down-> post
+
+post --> data
+
+' Structure
+layer1 -[hidden]right-> ingrs
+layer1 -[hidden]down-> pre
+ingrs -[hidden]down-> pre
+
+@enduml
