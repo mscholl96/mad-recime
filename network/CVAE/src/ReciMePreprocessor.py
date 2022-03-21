@@ -1,9 +1,8 @@
-import string
 import word2vec
 import numpy as np
 import pandas as pd
 import torch
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.preprocessing import MinMaxScaler
 from typing import List
 import pickle
 
@@ -182,3 +181,6 @@ class ReciMePreprocessor:
                 pd.DataFrame(array, columns=["amount", "unit", "ingredient"])
             )
         return outputList
+
+    def getConditional(self, data: torch.FloatTensor) -> torch.FloatTensor:
+        return data[:, len(self.unitDict) * 20 + 20 : len(self.unitDict) * 20 + 20 + 300]

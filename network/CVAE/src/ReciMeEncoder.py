@@ -4,46 +4,30 @@ from torch.autograd import Variable
 
 from typing import List, Tuple
 
-class _ReLUBatchNormLinear(nn.Module):
-    def __init__(self, input_dim, output_dim, useBatchNorm = True, actFunc = nn.ReLU()):
-        super(_ReLUBatchNormLinear, self).__init__()
+from src.BatchNormLinear import _BatchNormLinear
 
-        layers = []
-        layers.append(nn.Linear(input_dim, output_dim))
-        if useBatchNorm:
-            layers.append(nn.BatchNorm1d(output_dim))
-        if actFunc:
-            layers.append(actFunc)
-
-        self.layer = nn.Sequential(*layers)
-
-    def forward(self, x):
-        return self.layer(x)
 class ReciMeEncoder(nn.Module):
     """ ReciMeEncoder
     Variational Autoencoder specifically adopted for the ReciMe Dataset.
-
-    Provides additional helper functions to preprocess a given dataset or to iterate over the batches.
     """
-    def __init__(self, parameters, useBatchNorm = True, actFunc = nn.ReLU(), outFunc = nn.Tanh()) -> None:
+    def __init__(self, parameters: List[int], useBatchNorm = True, actFunc = nn.ReLU(), outFunc = nn.Tanh()) -> None:
         super(ReciMeEncoder, self).__init__()
 
         encoderList = []
         for index in range(1,len(parameters)):
-            encoderList.append(_ReLUBatchNormLinear(parameters[index-1], parameters[index], useBatchNorm, actFunc))
+            encoderList.append(_BatchNormLinear(parameters[index-1], parameters[index], useBatchNorm, actFunc))
         self.encoderStack = nn.Sequential(*encoderList) 
 
         self.muStack = nn.Linear(parameters[-1], parameters[-1])
-
         self.logvarStack = nn.Linear(parameters[-1], parameters[-1])
 
         decoderList = []
         index = 0
         for index in range(len(parameters)-1, 0, -1):
             if index > 1:
-                decoderList.append(_ReLUBatchNormLinear(parameters[index], parameters[index-1], useBatchNorm, actFunc))
+                decoderList.append(_BatchNormLinear(parameters[index], parameters[index-1], useBatchNorm, actFunc))
             else:
-                decoderList.append(_ReLUBatchNormLinear(parameters[index], parameters[index-1], useBatchNorm, outFunc))
+                decoderList.append(_BatchNormLinear(parameters[index], parameters[index-1], useBatchNorm, outFunc))
         self.decoderStack = nn.Sequential(*decoderList)
 
 
