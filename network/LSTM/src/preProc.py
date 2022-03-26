@@ -4,9 +4,9 @@ import os
 import glob
 
 
-def preProc(dataPath, tarPath, timestamp):
+def preProc(dataPath, tarPath):
 
-  dataSetSplits = glob.glob(dataPath + timestamp +  '/recipes_valid_*.pkl')
+  dataSetSplits = glob.glob(dataPath  +  '/recipes_valid_*.pkl')
 
   for split in range(len(dataSetSplits)):
     baseFrame = pd.read_pickle(dataSetSplits[split])
@@ -23,12 +23,12 @@ def preProc(dataPath, tarPath, timestamp):
     baseFrame['ingredient'] = np.vectorize(getIng, otypes=[np.ndarray])(baseFrame['ingredients'])
     baseFrame = baseFrame.drop(columns=['ingredients'])
 
-    baseFrame.to_pickle(tarPath + timestamp + '/recipePreProc_' + str(split) + '.pkl')
+    baseFrame.to_pickle(tarPath  + '/recipePreProc_' + str(split) + '.pkl')
 
-def getPreProcData(dataPath, timestamp, inpRange=None):
+def getPreProcData(dataPath, inpRange=None):
   baseFrame = pd.DataFrame()
 
-  dataSetSplits = glob.glob(dataPath + timestamp +  '/recipePreProc_*.pkl')
+  dataSetSplits = glob.glob(dataPath  +  '/recipePreProc_*.pkl')
 
   iterRange = inpRange if inpRange != None else range(len(dataSetSplits))
 

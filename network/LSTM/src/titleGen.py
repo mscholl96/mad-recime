@@ -28,7 +28,7 @@ from ray.tune.schedulers import ASHAScheduler
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.preprocessing.text import Tokenizer, text_to_word_sequence
 
-from src.preProc import getPreProcData
+from .preProc import getPreProcData
 
 
 class HyperParams():
@@ -53,7 +53,7 @@ class HyperParams():
         return('epochs ' + str(self.epochs) + '\n' +
                'batchSize ' + str(self.batchSize) + '\n' +
                'lr ' + str(self.lr) + '\n' +
-               'ratio train|val|test ' + str(self.ratio) + '\n' +
+               'ratio train|val ' + str(self.ratio) + '\n' +
                'hiddenDim ' + str(self.hiddenDim) + '\n' +
                'numLayers ' + str(self.numLayers) + '\n' +
                'embeddingDim ' + str(self.embeddingDim) + '\n')
@@ -62,7 +62,7 @@ class HyperParams():
 class TitleDataset(Dataset):
     def __init__(self, datapath):
 
-      data = getPreProcData(datapath, range(8))
+      data = getPreProcData(datapath, inpRange=range(8))
 
       self.tokenizer = Tokenizer(oov_token='OOV')
 
@@ -145,40 +145,40 @@ class EmbedLSTM(nn.Module):
         # initialize vital params
         self.vocab_size = len(dataset.tokenizer.word_index)
         self.batchSize = hyperParams.batchSize
-        self.hidden_dim = hyperParams.hidden_dim
+        self.hiddenDim = hyperParams.hiddenDim
+        self.numLayers = hyperParams.numLayers
         self.device = device
-        self.num_layers = hyperParams.num_layers
 
         # embedding definition
         self.word_embeddings = nn.Embedding(
-            self.vocab_size, hyperParams.embedding_dim)
+            self.vocab_size, hyperParams.embeddingDim)
 
         # lstm definition
-        self.lstm = nn.LSTM(input_size=hyperParams.embedding_dim,
-                            hidden_size=self.hidden_dim, num_layers=self.num_layers, batch_first=True)
+        self.lstm = nn.LSTM(input_size=hyperParams.embeddingDim,
+                            hidden_size=self.hiddenDim, num_layers=self.numLayers, batch_first=True)
 
         # definition fully connected layer
-        self.linear = nn.Linear(self.hidden_dim, self.vocab_size)
+        self.linear = nn.Linear(self.hiddenDim, self.vocab_size)
 
     def forward(self, x, hidden):
         embeds = self.word_embeddings(x)
 
         lstm_out, hidden = self.lstm(embeds, hidden)
 
-        out = self.linear(lstm_out.reshape(-1, self.hidden_dim))
+        out = self.linear(lstm_out.reshape(-1, self.hiddenDim))
         # tag_scores = F.log_softmax(tag_space, dim=1)
         return out, hidden
 
     def init_hidden(self, batchSize=None):
         ''' initializes hidden state '''
-        # Create two new tensors with sizes num_layers x batchSize x hidden_dim,
+        # Create two new tensors with sizes numLayers x batchSize x hiddenDim,
         # initialized to zero, for hidden state and cell state of LSTM
         weight = next(self.parameters()).data
 
         batchSize = self.batchSize if batchSize == None else batchSize
 
-        hidden = (weight.new(self.num_layers, batchSize, self.hidden_dim).zero_().to(self.device),
-                  weight.new(self.num_layers, batchSize, self.hidden_dim).zero_().to(self.device))
+        hidden = (weight.new(self.numLayers, batchSize, self.hiddenDim).zero_().to(self.device),
+                  weight.new(self.numLayers, batchSize, self.hiddenDim).zero_().to(self.device))
 
         return hidden
 
