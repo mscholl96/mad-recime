@@ -30,6 +30,8 @@ from tensorflow.keras.preprocessing.text import Tokenizer, text_to_word_sequence
 
 from .preProc import getPreProcData
 
+from sklearn.metrics import accuracy_score
+
 
 class HyperParams():
     def __init__(self,
@@ -61,10 +63,11 @@ class HyperParams():
 
 class InstructionSet(Dataset):
     def __init__(self, datapath, setSize=8):
+
       data = getPreProcData(datapath, inpRange=range(setSize))
 
       self.delimiter = '.'
-      self.tokenizer = Tokenizer(filters=self.delimiter)
+      self.tokenizer = Tokenizer(oov_token='OOV', filters=self.delimiter)
 
       # dataset split into word sequences required for training
       self.wordSeq = np.vectorize(self.getSequence, otypes=[np.ndarray])(
@@ -94,7 +97,7 @@ class InstructionSet(Dataset):
     def getCorpus(self, ingredient, title, instructions):
       ingTok = text_to_word_sequence(' '.join(ingredient))
       titleTok = text_to_word_sequence(title)
-      instTok = text_to_word_sequence(' \n '.join(instructions))
+      instTok = text_to_word_sequence(' ' + self.delimiter + ' '.join(instructions))
       return np.array(ingTok + titleTok + instTok)
 
     def getSequence(self, ingredient, title, instructions):
@@ -107,12 +110,12 @@ class InstructionSet(Dataset):
     def getIndexedSeqs(self, seq):
       ingTok = self.tokenizer.texts_to_sequences([seq['ingTitle']])[0]
       ingTok = pad_sequences([ingTok], maxlen=self.maxSequenceLength, padding='pre')[
-          0]  # https://arxiv.org/abs/1903.07288
+          0]  # optional value=1
       instTok = self.tokenizer.texts_to_sequences([seq['instructions']])[0]
 
       return {'ingTitle': ingTok, 'instructions': instTok}
 
-    def getNGramSeq(self, seq):
+    def getMovWindSeq(self, seq):
       # input needs to be pre padded
       idxShift = len(seq['instructions'])
       ingLen = len(seq['ingTitle'])
@@ -129,23 +132,22 @@ class InstructionSet(Dataset):
         return len(self.idxWords)
 
     def __getitem__(self, index):
+      # tuple of input (ingredients) and label (title)
         return (
-            torch.tensor(self.ngramSeq[index][:-1]),
-            torch.tensor(self.ngramSeq[index][1:])
+            torch.tensor(self.movWindSeq[index][:-1]),
+            torch.tensor(self.movWindSeq[index][1:])
         )
 
 
-## Model
+## Models
 # LSTM Net: https://pytorch.org/docs/stable/generated/torch.nn.LSTM.html
-
 # Embedding Net: https://pytorch.org/docs/stable/generated/torch.nn.Embedding.html
-
 # Init state: https://stats.stackexchange.com/questions/224737/best-way-to-initialize-lstm-state
 
-class Model3(nn.Module):
+class EmbedLSTM(nn.Module):
 
     def __init__(self, hyperParams, dataset, device):
-        super(Model3, self).__init__()
+        super(EmbedLSTM, self).__init__()
 
         # initialize vital params
         self.vocab_size = len(dataset.tokenizer.word_index)
@@ -154,10 +156,14 @@ class Model3(nn.Module):
         self.numLayers = hyperParams.numLayers
         self.device = device
 
+        # embedding definition
         self.word_embeddings = nn.Embedding(
             self.vocab_size, hyperParams.embeddingDim, padding_idx=0)
+        # lstm definition
         self.lstm = nn.LSTM(input_size=hyperParams.embeddingDim,
                             hidden_size=self.hiddenDim, num_layers=self.numLayers, batch_first=True)
+
+        # definition fully connected layer
         self.linear = nn.Linear(self.hiddenDim, self.vocab_size)
 
     def forward(self, x, hidden, cell):
@@ -181,8 +187,7 @@ class Model3(nn.Module):
 
 def train_epoch(epoch, batchSize, model, criterion, optimizer, train_loader, device, writer):
   running_loss = 0.
-  correct = 0
-  total = 0
+  accuracy = 0.
 
   h, c = model.init_hidden(batchSize)
 
@@ -196,18 +201,21 @@ def train_epoch(epoch, batchSize, model, criterion, optimizer, train_loader, dev
     # assign inputs and labels to device
     inputs, labels = inputs.to(device), labels.to(device)
 
-    # detach hidden states
-    # h = tuple([each.data for each in h])
-
     # clear gradients
     optimizer.zero_grad()
 
     # batch prediction
     outputs, (h, c) = model(inputs, h, c)
     labels = labels.long()
+    labels = labels.view(-1)
 
     # loss computation
-    loss = criterion(outputs, labels.view(-1))
+    loss = criterion(outputs, labels)
+
+    outputPred = outPredict(outputs)
+    # print('Out {}, OutPred {}, Lable {}'.format(outputs.shape, outputPred.shape, labels.shape))
+
+    accuracy += accuracy_score(outputPred.cpu().data.numpy(), labels.cpu().data.numpy())
 
     # calc backward gradients
     loss.backward()
@@ -218,21 +226,12 @@ def train_epoch(epoch, batchSize, model, criterion, optimizer, train_loader, dev
     # print statistics
     running_loss += loss.item()
 
-    # _, predicted = outputs.max(1)
-    # print(outputs.shape)
-    # print(predicted.shape)
-    # total += labels.size(0)
-    # correct += predicted.eq(labels).sum().item()
-
-  print("Epoch: %d, loss: %1.5f" % (epoch+1, running_loss / len(train_loader)))
-  return(running_loss / len(train_loader))
-
+  return(running_loss / len(train_loader), accuracy / len(train_loader))
 
 def val_epoch(epoch, batchSize, model, criterion, optimizer, val_loader, device, writer):
   # Validation Loss
-  correct = 0
-  total = 0
-  running_loss = 0.0
+  running_loss = 0.
+  accuracy = 0.
 
   h, c = model.init_hidden(batchSize)
 
@@ -245,20 +244,18 @@ def val_epoch(epoch, batchSize, model, criterion, optimizer, val_loader, device,
       # batch prediction (alternative: forward)
       outputs, (h, c) = model(inputs, h, c)
       labels = labels.long()
+      labels = labels.view(-1) # flatten labels to batchSize * seqLength
 
       # loss computation
-      loss = criterion(outputs, labels.view(-1))
+      loss = criterion(outputs, labels)
 
-      # _, predicted = torch.max(outputs.data, 1)
-      # total += labels.size(0)
-      # correct += (predicted == labels).sum().item()
+      outputPred = outPredict(outputs)
+
+      accuracy += accuracy_score(outputPred.cpu().data.numpy(), labels.cpu().data.numpy())
+
 
       running_loss += loss.item()
-  # # mean_val_accuracy = (100 * correct / total)
-  mean_val_loss = (running_loss)
-  # # print('Validation Accuracy: %d %%' % (mean_val_accuracy))
-  # print('Validation Loss:'  ,mean_val_loss )
-  return(running_loss / len(val_loader))
+  return(running_loss / len(val_loader), accuracy / len(val_loader))
 
 
 def train(dataset, model, hyperparams, device):
@@ -280,11 +277,12 @@ def train(dataset, model, hyperparams, device):
       val_set, batch_size=hyperparams.batchSize, drop_last=True)
 
   for epoch in range(hyperparams.epochs):
-    trainLoss = train_epoch(epoch, hyperparams.batchSize, model,
+    trainLoss, trainAcc = train_epoch(epoch, hyperparams.batchSize, model,
                             criterion, optimizer, train_loader, device, trainWriter)
-    valLoss = val_epoch(epoch, hyperparams.batchSize, model,
+    valLoss, valAcc = val_epoch(epoch, hyperparams.batchSize, model,
                         criterion, optimizer, val_loader, device, valWriter)
 
+    print("Epoch: {}, loss: {}, acc: {}".format(epoch+1, trainLoss, trainAcc))
     trainWriter.add_scalar('loss', trainLoss, epoch)
     valWriter.add_scalar('loss', valLoss, epoch)
 
@@ -292,13 +290,12 @@ def train(dataset, model, hyperparams, device):
   valWriter.flush()
 
 
-def predict(model, dataset, tkn, h, c):
+
+def predict(model, token, h, c):
 
   # tensor inputs
-  x = np.array([[dataset.tokenizer.word_index[tkn]]])
+  x = np.array([[token]])
   inputs = torch.from_numpy(x)
-  print('inp')
-  print(inputs.shape)
 
   # push to GPU
   inputs = inputs.to(model.device)
@@ -306,27 +303,38 @@ def predict(model, dataset, tkn, h, c):
   # get the output of the model
   out, (h, c) = model(inputs, h, c)
 
-  # get the token probabilities
-  print('out')
-  print(out.shape)
-  p = F.softmax(out, dim=1).data
-  print('pred')
-  print(p.shape)
-  print(p.reshape(p.shape[1],).shape)
-
-  p = p.cpu()
-  p = p.numpy()
-  p = p.reshape(p.shape[1],)
-
-  # get indices of top 3 values
-  print(np.argmax(p))
-  top_n_idx = p.argsort()[-3:][::-1]
-
-  # randomly select one of the three indices
-  sampled_token_index = top_n_idx[random.sample([0, 1, 2], 1)[0]]
+  sampledIdx = outPredict(out, 1).item()
+  print(sampledIdx)
 
   # return the encoded value of the predicted char and the hidden state
-  return sampled_token_index, (h, c)
+  return sampledIdx, (h, c)
+
+
+def outPredict(modelOutput, n=1):
+  # modelOutput is supposed to be a tensor of size [batchSize * seqLength, vocabSize]
+
+  # token probabilities
+  smOutput = F.softmax(modelOutput, dim=1).data
+
+  # return idx with highest probability
+  idxPred = torch.topk(smOutput, n)[1]
+
+  # reshape tensor to [batchSize * seqLength]
+  idxPred = idxPred.view(-1)
+
+  return idxPred
+  # predict = predict.cpu()
+  # predict = predict.numpy()
+  # predict = predict.squeeze()
+
+  # print('out shape {}, predict shape {}'.format(modelOutput.shape, predict.shape))
+
+  # randomly select out of highest n probabilities
+  # idxPredict = np.random.choice(np.argpartition(predict, -n)[-n:])
+  # print('Top1Idx {} TopIdx {}'.format(np.argmax(predict), idxPredict))
+
+  # return idxPredict
+
 
 
 # function to generate text
@@ -345,24 +353,21 @@ def sample(model, dataset, size, device, initial):
 
     # predict next token
     for t in initial:
-      token_idx, (h, c) = predict(model, dataset, t, h, c)
+      token, (h, c) = predict(model, t, h, c)
 
-    if token_idx > 0:
-      token = dataset.tokenizer.index_word[token_idx]
-      toks.append(token)
-    else:
-      token = ';'
-
+    toks.append(token)
     title.append(token)
 
     # predict subsequent tokens
     for i in range(size-1):
-        token_idx, (h, c) = predict(model, dataset, toks[-1], h, c)
-        if token_idx > 0:
-          token = dataset.tokenizer.index_word[token_idx]
-          toks.append(token)
-        else:
-          token = ';'
+        token, (h, c) = predict(model, toks[-1], h, c)
+        toks.append(token)
         title.append(token)
 
-    return ' '.join(title)
+    return dataset.tokenizer.sequences_to_texts([title])[0]
+
+def testInputPrep(ingList, tokenizer):
+  ingList = tokenizer.texts_to_sequences([' '.join(ingList)])[0]
+
+  return(ingList)
+  

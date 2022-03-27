@@ -69,15 +69,15 @@ class TitleDataset(Dataset):
       self.tokenizer = Tokenizer(oov_token='OOV')
 
       # dataset split into word sequences required for training
-      self.wordSeq = np.vectorize(self.getTitleSequence, otypes=[np.ndarray])(
-          data['title'], data['ingredient'])
+      self.wordSeq = np.vectorize(self.getSequence, otypes=[np.ndarray])(
+          data['ingredient'], data['title'])
 
       # training requires same length sequences -->  padding
       self.maxSequenceLength = max([len(seq['ings']) for seq in self.wordSeq])
 
       # list of all words in dataset
       self.words = np.concatenate(np.vectorize(self.getCorpus, otypes=[
-                                  np.ndarray])(data['title'], data['ingredient']))
+                                  np.ndarray])(data['ingredient'], data['title']))
 
       # tokenization corpus
       self.tokenizer.fit_on_texts(self.words)
@@ -92,20 +92,20 @@ class TitleDataset(Dataset):
       self.movWindSeq.dropna(inplace=True)
       self.movWindSeq = self.movWindSeq.to_numpy()
 
-    def getCorpus(self, title, ingredient):
+    def getCorpus(self, ingredient, title):
+      ingTok = text_to_word_sequence(' '.join(ingredient))
       titleTok = text_to_word_sequence(title)
-      ingTok = text_to_word_sequence(','.join(ingredient))
       return np.array(ingTok + titleTok)
 
-    def getTitleSequence(self, title, ingredient):
+    def getSequence(self, ingredient, title):
+      ingTok = text_to_word_sequence(' '.join(ingredient))
       titleTok = text_to_word_sequence(title)
-      ingTok = text_to_word_sequence(','.join(ingredient))
       return {'ings': ingTok, 'title': titleTok}
 
     def getIndexedSeqs(self, seq):
       ingTok = self.tokenizer.texts_to_sequences([seq['ings']])[0]
-      ingTok = pad_sequences([ingTok], maxlen=self.maxSequenceLength, padding='pre', value=1)[
-          0]
+      ingTok = pad_sequences([ingTok], maxlen=self.maxSequenceLength, padding='pre')[
+          0] # optional value=1
       titleTok = self.tokenizer.texts_to_sequences([seq['title']])[0]
 
       return {'ings': ingTok, 'title': titleTok}
@@ -153,8 +153,7 @@ class EmbedLSTM(nn.Module):
 
         # embedding definition
         self.word_embeddings = nn.Embedding(
-            self.vocab_size, hyperParams.embeddingDim, padding_idx=1)
-
+            self.vocab_size, hyperParams.embeddingDim, padding_idx=0)
         # lstm definition
         self.lstm = nn.LSTM(input_size=hyperParams.embeddingDim,
                             hidden_size=self.hiddenDim, num_layers=self.numLayers, batch_first=True)
@@ -250,7 +249,7 @@ def train_epoch(epoch, batchSize, model, criterion, optimizer, train_loader, dev
     outputPred = outPredict(outputs)
     # print('Out {}, OutPred {}, Lable {}'.format(outputs.shape, outputPred.shape, labels.shape))
 
-    accuracy += accuracy_score(outputPred, labels)
+    accuracy += accuracy_score(outputPred.cpu().data.numpy(), labels.cpu().data.numpy())
 
     # calc backward gradients
     loss.backward()
@@ -286,7 +285,7 @@ def val_epoch(epoch, batchSize, model, criterion, optimizer, val_loader, device,
 
       outputPred = outPredict(outputs)
 
-      accuracy += accuracy_score(outputPred, labels)
+      accuracy += accuracy_score(outputPred.cpu().data.numpy(), labels.cpu().data.numpy())
 
 
       running_loss += loss.item()
@@ -317,8 +316,7 @@ def train(dataset, model, hyperparams, device):
     valLoss, valAcc = val_epoch(epoch, hyperparams.batchSize, model,
                         criterion, optimizer, val_loader, device, valWriter)
 
-    print("Epoch: %d, loss: %1.5f" % (epoch+1, trainLoss))
-    print("Epoch: %d, acc: %1.5f" % (epoch+1, trainAcc))
+    print("Epoch: {}, loss: {}, acc: {}".format(epoch+1, trainLoss, trainAcc))
     trainWriter.add_scalar('loss', trainLoss, epoch)
     valWriter.add_scalar('loss', valLoss, epoch)
 
