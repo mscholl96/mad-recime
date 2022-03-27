@@ -60,8 +60,8 @@ class HyperParams():
 
 
 class InstructionSet(Dataset):
-    def __init__(self, datapath):
-      data = getPreProcData(datapath, inpRange=range(2))
+    def __init__(self, datapath, setSize=8):
+      data = getPreProcData(datapath, inpRange=range(setSize))
 
       self.delimiter = '.'
       self.tokenizer = Tokenizer(filters=self.delimiter)
@@ -170,18 +170,6 @@ class Model3(nn.Module):
 
         return out, (hidden, cell)
 
-    # def init_hidden(self, batchSize=None):
-    #     ''' initializes hidden state '''
-    #     # Create two new tensors with sizes numLayers x batchSize x hiddenDim,
-    #     # initialized to zero, for hidden state and cell state of LSTM
-    #     weight = next(self.parameters()).data
-
-    #     batchSize = self.batchSize if batchSize == None else batchSize
-
-    #     hidden = (weight.new(self.numLayers, batchSize, self.hiddenDim).zero_().to(self.device),
-    #               weight.new(self.numLayers, batchSize, self.hiddenDim).zero_().to(self.device))
-
-    #     return hidden
 
     def init_hidden(self, batch_size):
         hidden = torch.zeros(self.numLayers, batch_size,
@@ -290,7 +278,6 @@ def train(dataset, model, hyperparams, device):
       train_set, batch_size=hyperparams.batchSize, drop_last=True)
   val_loader = DataLoader(
       val_set, batch_size=hyperparams.batchSize, drop_last=True)
-  # further options: shuffle, num_workers
 
   for epoch in range(hyperparams.epochs):
     trainLoss = train_epoch(epoch, hyperparams.batchSize, model,
@@ -314,7 +301,7 @@ def predict(model, dataset, tkn, h, c):
   print(inputs.shape)
 
   # push to GPU
-  inputs = inputs.to(device)
+  inputs = inputs.to(model.device)
 
   # get the output of the model
   out, (h, c) = model(inputs, h, c)

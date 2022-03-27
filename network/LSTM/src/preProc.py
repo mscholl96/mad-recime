@@ -30,9 +30,12 @@ def getPreProcData(dataPath, inpRange=None):
 
   dataSetSplits = glob.glob(dataPath  +  '/recipePreProc_*.pkl')
 
-  iterRange = inpRange if inpRange != None else range(len(dataSetSplits))
+  iterRange = range(len(dataSetSplits))
+  
+  if inpRange != None and len(inpRange) <= len(iterRange):
+    iterRange = inpRange
 
-  for split in range(len(dataSetSplits)):
+  for split in iterRange:
     baseFrame = baseFrame.append(pd.read_pickle(dataSetSplits[split]))
 
   return baseFrame

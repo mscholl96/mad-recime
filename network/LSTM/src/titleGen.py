@@ -30,6 +30,8 @@ from tensorflow.keras.preprocessing.text import Tokenizer, text_to_word_sequence
 
 from .preProc import getPreProcData
 
+from sklearn.metrics import accuracy_score
+
 
 class HyperParams():
     def __init__(self,
@@ -60,9 +62,9 @@ class HyperParams():
 
 
 class TitleDataset(Dataset):
-    def __init__(self, datapath):
+    def __init__(self, datapath, setSize=8):
 
-      data = getPreProcData(datapath, inpRange=range(8))
+      data = getPreProcData(datapath, inpRange=range(setSize))
 
       self.tokenizer = Tokenizer(oov_token='OOV')
 
@@ -151,7 +153,7 @@ class EmbedLSTM(nn.Module):
 
         # embedding definition
         self.word_embeddings = nn.Embedding(
-            self.vocab_size, hyperParams.embeddingDim)
+            self.vocab_size, hyperParams.embeddingDim, padding_idx=1)
 
         # lstm definition
         self.lstm = nn.LSTM(input_size=hyperParams.embeddingDim,
@@ -160,58 +162,95 @@ class EmbedLSTM(nn.Module):
         # definition fully connected layer
         self.linear = nn.Linear(self.hiddenDim, self.vocab_size)
 
+    def forward(self, x, hidden, cell):
+        embeds = self.word_embeddings(x)
+
+        lstm_out, (hidden, cell) = self.lstm(
+            embeds, (hidden.detach(), cell.detach()))
+
+        out = self.linear(lstm_out.reshape(-1, self.hiddenDim))
+
+        return out, (hidden, cell)
+
+    def init_hidden(self, batch_size):
+        hidden = torch.zeros(self.numLayers, batch_size,
+                             self.hiddenDim).to(self.device)
+        cell = torch.zeros(self.numLayers, batch_size,
+                           self.hiddenDim).to(self.device)
+        return hidden, cell
+
+
+class EmbedGRU(nn.Module):
+
+    def __init__(self, hyperParams, dataset, device):
+        super(EmbedLSTM, self).__init__()
+
+        # initialize vital params
+        self.vocab_size = len(dataset.tokenizer.word_index)
+        self.batchSize = hyperParams.batchSize
+        self.hiddenDim = hyperParams.hiddenDim
+        self.numLayers = hyperParams.numLayers
+        self.device = device
+
+        # embedding definition
+        self.word_embeddings = nn.Embedding(
+            self.vocab_size, hyperParams.embeddingDim)
+
+        # lstm definition
+        self.gru = nn.GRU(input_size=hyperParams.embeddingDim,
+                            hidden_size=self.hiddenDim, num_layers=self.numLayers, batch_first=True)
+
+        # definition fully connected layer
+        self.linear = nn.Linear(self.hiddenDim, self.vocab_size)
+
     def forward(self, x, hidden):
         embeds = self.word_embeddings(x)
 
-        lstm_out, hidden = self.lstm(embeds, hidden)
+        gru_out, hidden = self.lstm(embeds, hidden)
 
-        out = self.linear(lstm_out.reshape(-1, self.hiddenDim))
-        # tag_scores = F.log_softmax(tag_space, dim=1)
+        out = self.linear(gru_out.reshape(-1, self.hiddenDim))
+
         return out, hidden
 
-    def init_hidden(self, batchSize=None):
-        ''' initializes hidden state '''
-        # Create two new tensors with sizes numLayers x batchSize x hiddenDim,
-        # initialized to zero, for hidden state and cell state of LSTM
-        weight = next(self.parameters()).data
-
-        batchSize = self.batchSize if batchSize == None else batchSize
-
-        hidden = (weight.new(self.numLayers, batchSize, self.hiddenDim).zero_().to(self.device),
-                  weight.new(self.numLayers, batchSize, self.hiddenDim).zero_().to(self.device))
-
-        return hidden
+    def init_hidden(self, batch_size):
+        hidden = torch.zeros(self.numLayers, batch_size,
+                             self.hiddenDim).to(self.device)
+        cell = torch.zeros(self.numLayers, batch_size,
+                           self.hiddenDim).to(self.device)
+        return hidden, cell
 
 
-def train_epoch(epoch, model, criterion, optimizer, train_loader, device, writer):
+def train_epoch(epoch, batchSize, model, criterion, optimizer, train_loader, device, writer):
   running_loss = 0.
-  correct = 0
-  total = 0
+  accuracy = 0.
 
-  h = model.init_hidden()
+  h, c = model.init_hidden(batchSize)
 
   model.train()
 
-  for batch, (input, target) in enumerate(train_loader):
+  for batch, (inputs, labels) in enumerate(train_loader):
     if epoch == 0 and batch == 0:
       writer.add_graph(model, input_to_model=(
-          input.to(device), h), verbose=False)
+          inputs.to(device), h, c), verbose=False)
 
-    # assign input and target to device
-    input, target = input.to(device), target.to(device)
-
-    # detach hidden states
-    h = tuple([each.data for each in h])
+    # assign inputs and labels to device
+    inputs, labels = inputs.to(device), labels.to(device)
 
     # clear gradients
     optimizer.zero_grad()
 
-    # batch prediction (alternative: forward)
-    outputs, h = model(input, h)
-    target = target.long()
+    # batch prediction
+    outputs, (h, c) = model(inputs, h, c)
+    labels = labels.long()
+    labels = labels.view(-1)
 
     # loss computation
-    loss = criterion(outputs, target.view(-1))
+    loss = criterion(outputs, labels)
+
+    outputPred = outPredict(outputs)
+    # print('Out {}, OutPred {}, Lable {}'.format(outputs.shape, outputPred.shape, labels.shape))
+
+    accuracy += accuracy_score(outputPred, labels)
 
     # calc backward gradients
     loss.backward()
@@ -222,50 +261,36 @@ def train_epoch(epoch, model, criterion, optimizer, train_loader, device, writer
     # print statistics
     running_loss += loss.item()
 
-    # _, predicted = outputs.max(1)
-    # print(outputs.shape)
-    # print(predicted.shape)
-    # total += target.size(0)
-    # correct += predicted.eq(target).sum().item()
+  return(running_loss / len(train_loader), accuracy / len(train_loader))
 
-  print("Epoch: %d, loss: %1.5f" % (epoch+1, running_loss / len(train_loader)))
-  return(running_loss / len(train_loader))
-
-
-def val_epoch(epoch, model, criterion, optimizer, val_loader, device, writer):
+def val_epoch(epoch, batchSize, model, criterion, optimizer, val_loader, device, writer):
   # Validation Loss
-  correct = 0
-  total = 0
-  running_loss = 0.0
+  running_loss = 0.
+  accuracy = 0.
 
-  h = model.init_hidden()
+  h, c = model.init_hidden(batchSize)
 
   model.eval()  # what does it do
   with torch.no_grad():  # what does it do
-    for batch, (input, target) in enumerate(val_loader):
-      # assign input and target to device
-      input, target = input.to(device), target.to(device)
-
-      # detach hidden states
-      h = tuple([each.data for each in h])
+    for batch, (inputs, labels) in enumerate(val_loader):
+      # assign inputs and labels to device
+      inputs, labels = inputs.to(device), labels.to(device)
 
       # batch prediction (alternative: forward)
-      outputs, h = model(input, h)
-      target = target.long()
+      outputs, (h, c) = model(inputs, h, c)
+      labels = labels.long()
+      labels = labels.view(-1) # flatten labels to batchSize * seqLength
 
       # loss computation
-      loss = criterion(outputs, target.view(-1))
+      loss = criterion(outputs, labels)
 
-      # _, predicted = torch.max(outputs.data, 1)
-      # total += target.size(0)
-      # correct += (predicted == target).sum().item()
+      outputPred = outPredict(outputs)
+
+      accuracy += accuracy_score(outputPred, labels)
+
 
       running_loss += loss.item()
-  # # mean_val_accuracy = (100 * correct / total)
-  mean_val_loss = (running_loss)
-  # # print('Validation Accuracy: %d %%' % (mean_val_accuracy))
-  # print('Validation Loss:'  ,mean_val_loss )
-  return(running_loss / len(val_loader))
+  return(running_loss / len(val_loader), accuracy / len(val_loader))
 
 
 def train(dataset, model, hyperparams, device):
@@ -285,14 +310,15 @@ def train(dataset, model, hyperparams, device):
       train_set, batch_size=hyperparams.batchSize, drop_last=True)
   val_loader = DataLoader(
       val_set, batch_size=hyperparams.batchSize, drop_last=True)
-  # further options: shuffle, num_workers
 
   for epoch in range(hyperparams.epochs):
-    trainLoss = train_epoch(epoch, model, criterion,
-                            optimizer, train_loader, device, trainWriter)
-    valLoss = val_epoch(epoch, model, criterion, optimizer,
-                        val_loader, device, valWriter)
+    trainLoss, trainAcc = train_epoch(epoch, hyperparams.batchSize, model,
+                            criterion, optimizer, train_loader, device, trainWriter)
+    valLoss, valAcc = val_epoch(epoch, hyperparams.batchSize, model,
+                        criterion, optimizer, val_loader, device, valWriter)
 
+    print("Epoch: %d, loss: %1.5f" % (epoch+1, trainLoss))
+    print("Epoch: %d, acc: %1.5f" % (epoch+1, trainAcc))
     trainWriter.add_scalar('loss', trainLoss, epoch)
     valWriter.add_scalar('loss', valLoss, epoch)
 
@@ -300,62 +326,83 @@ def train(dataset, model, hyperparams, device):
   valWriter.flush()
 
 
-def predict(model, dataset, tkn, h=None):
+
+def predict(model, token, h, c):
 
   # tensor inputs
-  x = np.array([[dataset.tokenizer.word_index[tkn]]])
+  x = np.array([[token]])
   inputs = torch.from_numpy(x)
 
   # push to GPU
   inputs = inputs.to(model.device)
 
-  # detach hidden state from history
-  h = tuple([each.data for each in h])
-
   # get the output of the model
-  out, h = model(inputs, h)
+  out, (h, c) = model(inputs, h, c)
 
-  # get the token probabilities
-  p = F.softmax(out, dim=1).data
-
-  p = p.cpu()
-
-  p = p.numpy()
-  p = p.reshape(p.shape[1],)
-
-  # get indices of top 3 values
-  top_n_idx = p.argsort()[-3:][::-1]
-
-  # randomly select one of the three indices
-  sampled_token_index = top_n_idx[random.sample([0, 1, 2], 1)[0]]
+  sampledIdx = outPredict(out, 1).item()
+  print(sampledIdx)
 
   # return the encoded value of the predicted char and the hidden state
-  return dataset.tokenizer.index_word[sampled_token_index], h
+  return sampledIdx, (h, c)
+
+
+def outPredict(modelOutput, n=1):
+  # modelOutput is supposed to be a tensor of size [batchSize * seqLength, vocabSize]
+
+  # token probabilities
+  smOutput = F.softmax(modelOutput, dim=1).data
+
+  # return idx with highest probability
+  idxPred = torch.topk(smOutput, n)[1]
+
+  # reshape tensor to [batchSize * seqLength]
+  idxPred = idxPred.view(-1)
+
+  return idxPred
+  # predict = predict.cpu()
+  # predict = predict.numpy()
+  # predict = predict.squeeze()
+
+  # print('out shape {}, predict shape {}'.format(modelOutput.shape, predict.shape))
+
+  # randomly select out of highest n probabilities
+  # idxPredict = np.random.choice(np.argpartition(predict, -n)[-n:])
+  # print('Top1Idx {} TopIdx {}'.format(np.argmax(predict), idxPredict))
+
+  # return idxPredict
+
 
 
 # function to generate text
 def sample(model, dataset, size, device, initial):
 
+    # push to GPU
+    model.to(device)
+
     model.eval()
 
     # batch size is 1
-    h = model.init_hidden(batchSize=1)
+    h, c = model.init_hidden(1)
 
     toks = initial
     title = []
 
     # predict next token
     for t in initial:
-      token, h = predict(model, dataset, t, h)
+      token, (h, c) = predict(model, t, h, c)
 
     toks.append(token)
-
     title.append(token)
 
     # predict subsequent tokens
     for i in range(size-1):
-        token, h = predict(model, dataset, toks[-1], h)
+        token, (h, c) = predict(model, toks[-1], h, c)
         toks.append(token)
         title.append(token)
 
-    return ' '.join(title)
+    return dataset.tokenizer.sequences_to_texts([title])[0]
+
+def testInputPrep(ingList, tokenizer):
+  ingList = tokenizer.texts_to_sequences([' '.join(ingList)])[0]
+
+  return(ingList)
