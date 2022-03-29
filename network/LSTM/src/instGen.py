@@ -66,8 +66,10 @@ class InstructionSet(Dataset):
 
       data = getPreProcData(datapath, inpRange=range(setSize))
 
-      self.delimiter = '.'
-      self.tokenizer = Tokenizer(oov_token='OOV', filters=self.delimiter)
+      self.delimiter = '\n'
+      self.filters = '!\"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n'.replace(
+          self.delimiter, '').replace('-', '').replace('°', '')
+      self.tokenizer = Tokenizer(oov_token='OOV', filters=self.filters)
 
       # dataset split into word sequences required for training
       self.wordSeq = np.vectorize(self.getSequence, otypes=[np.ndarray])(
@@ -97,14 +99,15 @@ class InstructionSet(Dataset):
     def getCorpus(self, ingredient, title, instructions):
       ingTok = text_to_word_sequence(' '.join(ingredient))
       titleTok = text_to_word_sequence(title)
-      instTok = text_to_word_sequence(' ' + self.delimiter + ' '.join(instructions))
+      instTok = text_to_word_sequence(
+          str(' ' + self.delimiter + ' ').join(instructions), filters=self.filters)
       return np.array(ingTok + titleTok + instTok)
 
     def getSequence(self, ingredient, title, instructions):
       ingTok = text_to_word_sequence(' '.join(ingredient))
       titleTok = text_to_word_sequence(title)
       instTok = text_to_word_sequence(
-          ' ' + self.delimiter + ' '.join(instructions))
+          str(' ' + self.delimiter + ' ').join(instructions), filters=self.filters)
       return {'ingTitle': ingTok + titleTok, 'instructions': instTok}
 
     def getIndexedSeqs(self, seq):
@@ -176,7 +179,6 @@ class EmbedLSTM(nn.Module):
 
         return out, (hidden, cell)
 
-
     def init_hidden(self, batch_size):
         hidden = torch.zeros(self.numLayers, batch_size,
                              self.hiddenDim).to(self.device)
@@ -215,7 +217,8 @@ def train_epoch(epoch, batchSize, model, criterion, optimizer, train_loader, dev
     outputPred = outPredict(outputs)
     # print('Out {}, OutPred {}, Lable {}'.format(outputs.shape, outputPred.shape, labels.shape))
 
-    accuracy += accuracy_score(outputPred.cpu().data.numpy(), labels.cpu().data.numpy())
+    accuracy += accuracy_score(outputPred.cpu().data.numpy(),
+                               labels.cpu().data.numpy())
 
     # calc backward gradients
     loss.backward()
@@ -227,6 +230,7 @@ def train_epoch(epoch, batchSize, model, criterion, optimizer, train_loader, dev
     running_loss += loss.item()
 
   return(running_loss / len(train_loader), accuracy / len(train_loader))
+
 
 def val_epoch(epoch, batchSize, model, criterion, optimizer, val_loader, device, writer):
   # Validation Loss
@@ -244,15 +248,15 @@ def val_epoch(epoch, batchSize, model, criterion, optimizer, val_loader, device,
       # batch prediction (alternative: forward)
       outputs, (h, c) = model(inputs, h, c)
       labels = labels.long()
-      labels = labels.view(-1) # flatten labels to batchSize * seqLength
+      labels = labels.view(-1)  # flatten labels to batchSize * seqLength
 
       # loss computation
       loss = criterion(outputs, labels)
 
       outputPred = outPredict(outputs)
 
-      accuracy += accuracy_score(outputPred.cpu().data.numpy(), labels.cpu().data.numpy())
-
+      accuracy += accuracy_score(outputPred.cpu().data.numpy(),
+                                 labels.cpu().data.numpy())
 
       running_loss += loss.item()
   return(running_loss / len(val_loader), accuracy / len(val_loader))
@@ -278,9 +282,9 @@ def train(dataset, model, hyperparams, device):
 
   for epoch in range(hyperparams.epochs):
     trainLoss, trainAcc = train_epoch(epoch, hyperparams.batchSize, model,
-                            criterion, optimizer, train_loader, device, trainWriter)
+                                      criterion, optimizer, train_loader, device, trainWriter)
     valLoss, valAcc = val_epoch(epoch, hyperparams.batchSize, model,
-                        criterion, optimizer, val_loader, device, valWriter)
+                                criterion, optimizer, val_loader, device, valWriter)
 
     print("Epoch: {}, loss: {}, acc: {}".format(epoch+1, trainLoss, trainAcc))
     trainWriter.add_scalar('loss', trainLoss, epoch)
@@ -288,7 +292,6 @@ def train(dataset, model, hyperparams, device):
 
   trainWriter.flush()
   valWriter.flush()
-
 
 
 def predict(model, token, h, c):
@@ -304,7 +307,6 @@ def predict(model, token, h, c):
   out, (h, c) = model(inputs, h, c)
 
   sampledIdx = outPredict(out, 1).item()
-  print(sampledIdx)
 
   # return the encoded value of the predicted char and the hidden state
   return sampledIdx, (h, c)
@@ -336,7 +338,6 @@ def outPredict(modelOutput, n=1):
   # return idxPredict
 
 
-
 # function to generate text
 def sample(model, dataset, size, device, initial):
 
@@ -366,8 +367,8 @@ def sample(model, dataset, size, device, initial):
 
     return dataset.tokenizer.sequences_to_texts([title])[0]
 
+
 def testInputPrep(ingList, tokenizer):
   ingList = tokenizer.texts_to_sequences([' '.join(ingList)])[0]
 
   return(ingList)
-  

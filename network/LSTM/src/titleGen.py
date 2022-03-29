@@ -161,6 +161,8 @@ class EmbedLSTM(nn.Module):
         # definition fully connected layer
         self.linear = nn.Linear(self.hiddenDim, self.vocab_size)
 
+        self.softmax = nn.Softmax(dim=1)
+
     def forward(self, x, hidden, cell):
         embeds = self.word_embeddings(x)
 
@@ -168,6 +170,8 @@ class EmbedLSTM(nn.Module):
             embeds, (hidden.detach(), cell.detach()))
 
         out = self.linear(lstm_out.reshape(-1, self.hiddenDim))
+
+        out = self.softmax(out)
 
         return out, (hidden, cell)
 
@@ -182,7 +186,7 @@ class EmbedLSTM(nn.Module):
 class EmbedGRU(nn.Module):
 
     def __init__(self, hyperParams, dataset, device):
-        super(EmbedLSTM, self).__init__()
+        super(EmbedGRU, self).__init__()
 
         # initialize vital params
         self.vocab_size = len(dataset.tokenizer.word_index)
@@ -219,7 +223,7 @@ class EmbedGRU(nn.Module):
         return hidden, cell
 
 
-def train_epoch(epoch, batchSize, model, criterion, optimizer, train_loader, device, writer):
+def train_epoch(epoch, batchSize, model, optimizer, train_loader, device, writer):
   running_loss = 0.
   accuracy = 0.
 
@@ -244,7 +248,7 @@ def train_epoch(epoch, batchSize, model, criterion, optimizer, train_loader, dev
     labels = labels.view(-1)
 
     # loss computation
-    loss = criterion(outputs, labels)
+    loss = F.cross_entropy(outputs, labels)
 
     outputPred = outPredict(outputs)
     # print('Out {}, OutPred {}, Lable {}'.format(outputs.shape, outputPred.shape, labels.shape))
@@ -262,7 +266,7 @@ def train_epoch(epoch, batchSize, model, criterion, optimizer, train_loader, dev
 
   return(running_loss / len(train_loader), accuracy / len(train_loader))
 
-def val_epoch(epoch, batchSize, model, criterion, optimizer, val_loader, device, writer):
+def val_epoch(epoch, batchSize, model, optimizer, val_loader, device, writer):
   # Validation Loss
   running_loss = 0.
   accuracy = 0.
@@ -281,7 +285,7 @@ def val_epoch(epoch, batchSize, model, criterion, optimizer, val_loader, device,
       labels = labels.view(-1) # flatten labels to batchSize * seqLength
 
       # loss computation
-      loss = criterion(outputs, labels)
+      loss = F.cross_entropy(outputs, labels)
 
       outputPred = outPredict(outputs)
 
@@ -299,7 +303,6 @@ def train(dataset, model, hyperparams, device):
   valWriter = SummaryWriter(
       '/content/drive/MyDrive/runs/titleTrainer/validation'.format(timestamp))
 
-  criterion = nn.CrossEntropyLoss()
   optimizer = optim.Adam(model.parameters(), lr=hyperparams.lr)
 
   # split data
@@ -312,9 +315,9 @@ def train(dataset, model, hyperparams, device):
 
   for epoch in range(hyperparams.epochs):
     trainLoss, trainAcc = train_epoch(epoch, hyperparams.batchSize, model,
-                            criterion, optimizer, train_loader, device, trainWriter)
+                            optimizer, train_loader, device, trainWriter)
     valLoss, valAcc = val_epoch(epoch, hyperparams.batchSize, model,
-                        criterion, optimizer, val_loader, device, valWriter)
+                        optimizer, val_loader, device, valWriter)
 
     print("Epoch: {}, loss: {}, acc: {}".format(epoch+1, trainLoss, trainAcc))
     trainWriter.add_scalar('loss', trainLoss, epoch)
@@ -348,10 +351,10 @@ def outPredict(modelOutput, n=1):
   # modelOutput is supposed to be a tensor of size [batchSize * seqLength, vocabSize]
 
   # token probabilities
-  smOutput = F.softmax(modelOutput, dim=1).data
+  # smOutput = F.softmax(modelOutput, dim=1).data
 
   # return idx with highest probability
-  idxPred = torch.topk(smOutput, n)[1]
+  idxPred = torch.topk(modelOutput, n)[1]
 
   # reshape tensor to [batchSize * seqLength]
   idxPred = idxPred.view(-1)
