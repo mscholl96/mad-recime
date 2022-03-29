@@ -163,24 +163,24 @@ class EmbedLSTM(nn.Module):
 
         self.softmax = nn.Softmax(dim=1)
 
-    def forward(self, x, hidden, cell):
+    def forward(self, x, hidden):
         embeds = self.word_embeddings(x)
 
-        lstm_out, (hidden, cell) = self.lstm(
-            embeds, (hidden.detach(), cell.detach()))
+        lstm_out, hidden = self.lstm(
+            embeds, (hidden[0].detach(), hidden[1].detach()))
 
         out = self.linear(lstm_out.reshape(-1, self.hiddenDim))
 
         out = self.softmax(out)
 
-        return out, (hidden, cell)
+        return out, hidden
 
     def init_hidden(self, batch_size):
         hidden = torch.zeros(self.numLayers, batch_size,
                              self.hiddenDim).to(self.device)
         cell = torch.zeros(self.numLayers, batch_size,
                            self.hiddenDim).to(self.device)
-        return hidden, cell
+        return (hidden, cell)
 
 
 class EmbedGRU(nn.Module):
@@ -209,7 +209,7 @@ class EmbedGRU(nn.Module):
     def forward(self, x, hidden):
         embeds = self.word_embeddings(x)
 
-        gru_out, hidden = self.lstm(embeds, hidden)
+        gru_out, hidden = self.gru(embeds, hidden.detach())
 
         out = self.linear(gru_out.reshape(-1, self.hiddenDim))
 
@@ -218,23 +218,21 @@ class EmbedGRU(nn.Module):
     def init_hidden(self, batch_size):
         hidden = torch.zeros(self.numLayers, batch_size,
                              self.hiddenDim).to(self.device)
-        cell = torch.zeros(self.numLayers, batch_size,
-                           self.hiddenDim).to(self.device)
-        return hidden, cell
+        return hidden
 
 
 def train_epoch(epoch, batchSize, model, optimizer, train_loader, device, writer):
   running_loss = 0.
   accuracy = 0.
 
-  h, c = model.init_hidden(batchSize)
+  hidden = model.init_hidden(batchSize)
 
   model.train()
 
   for batch, (inputs, labels) in enumerate(train_loader):
     if epoch == 0 and batch == 0:
       writer.add_graph(model, input_to_model=(
-          inputs.to(device), h, c), verbose=False)
+          inputs.to(device), hidden), verbose=False)
 
     # assign inputs and labels to device
     inputs, labels = inputs.to(device), labels.to(device)
@@ -243,7 +241,7 @@ def train_epoch(epoch, batchSize, model, optimizer, train_loader, device, writer
     optimizer.zero_grad()
 
     # batch prediction
-    outputs, (h, c) = model(inputs, h, c)
+    outputs, hidden = model(inputs, hidden)
     labels = labels.long()
     labels = labels.view(-1)
 
@@ -271,7 +269,7 @@ def val_epoch(epoch, batchSize, model, optimizer, val_loader, device, writer):
   running_loss = 0.
   accuracy = 0.
 
-  h, c = model.init_hidden(batchSize)
+  hidden = model.init_hidden(batchSize)
 
   model.eval()  # what does it do
   with torch.no_grad():  # what does it do
@@ -280,7 +278,7 @@ def val_epoch(epoch, batchSize, model, optimizer, val_loader, device, writer):
       inputs, labels = inputs.to(device), labels.to(device)
 
       # batch prediction (alternative: forward)
-      outputs, (h, c) = model(inputs, h, c)
+      outputs, hidden = model(inputs, hidden)
       labels = labels.long()
       labels = labels.view(-1) # flatten labels to batchSize * seqLength
 
@@ -321,14 +319,16 @@ def train(dataset, model, hyperparams, device):
 
     print("Epoch: {}, loss: {}, acc: {}".format(epoch+1, trainLoss, trainAcc))
     trainWriter.add_scalar('loss', trainLoss, epoch)
+    trainWriter.add_scalar('acc', trainAcc, epoch)
     valWriter.add_scalar('loss', valLoss, epoch)
+    valWriter.add_scalar('acc', valAcc, epoch)
 
   trainWriter.flush()
   valWriter.flush()
 
 
 
-def predict(model, token, h, c):
+def predict(model, token, hidden):
 
   # tensor inputs
   x = np.array([[token]])
@@ -338,13 +338,13 @@ def predict(model, token, h, c):
   inputs = inputs.to(model.device)
 
   # get the output of the model
-  out, (h, c) = model(inputs, h, c)
+  out, hidden = model(inputs, hidden)
 
   sampledIdx = outPredict(out, 1).item()
   print(sampledIdx)
 
   # return the encoded value of the predicted char and the hidden state
-  return sampledIdx, (h, c)
+  return sampledIdx, hidden
 
 
 def outPredict(modelOutput, n=1):
@@ -383,21 +383,21 @@ def sample(model, dataset, size, device, initial):
     model.eval()
 
     # batch size is 1
-    h, c = model.init_hidden(1)
+    hidden = model.init_hidden(1)
 
     toks = initial
     title = []
 
     # predict next token
     for t in initial:
-      token, (h, c) = predict(model, t, h, c)
+      token, hidden = predict(model, t, hidden)
 
     toks.append(token)
     title.append(token)
 
     # predict subsequent tokens
     for i in range(size-1):
-        token, (h, c) = predict(model, toks[-1], h, c)
+        token, hidden = predict(model, toks[-1], hidden)
         toks.append(token)
         title.append(token)
 
