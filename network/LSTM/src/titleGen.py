@@ -161,8 +161,6 @@ class EmbedLSTM(nn.Module):
         # definition fully connected layer
         self.linear = nn.Linear(self.hiddenDim, self.vocab_size)
 
-        # self.softmax = nn.Softmax(dim=1)
-
     def forward(self, x, hidden):
         embeds = self.word_embeddings(x)
 
@@ -170,8 +168,6 @@ class EmbedLSTM(nn.Module):
             embeds, (hidden[0].detach(), hidden[1].detach()))
 
         out = self.linear(lstm_out.reshape(-1, self.hiddenDim))
-
-        # out = self.softmax(out)
 
         return out, hidden
 
@@ -245,7 +241,6 @@ def train_epoch(epoch, batchSize, model, optimizer, train_loader, device, writer
     labels = labels.long().view(-1)
 
     # loss computation
-    # loss = F.cross_entropy(outputs, labels)
     criterion =  nn.CrossEntropyLoss()
     loss = criterion(outputs, labels)
 
@@ -282,8 +277,10 @@ def val_epoch(epoch, batchSize, model, optimizer, val_loader, device, writer):
       labels = labels.long().view(-1) # flatten labels to batchSize * seqLength
 
       # loss computation
-      loss = F.cross_entropy(outputs, labels)
-
+      criterion =  nn.CrossEntropyLoss()
+      loss = criterion(outputs, labels)
+      
+      outputs = F.softmax(outputs,dim=1)
       outputPred = torch.argmax(outputs, dim=1)
 
       accuracy += accuracy_score(outputPred.cpu().data.numpy(), labels.cpu().data.numpy())
@@ -295,9 +292,9 @@ def val_epoch(epoch, batchSize, model, optimizer, val_loader, device, writer):
 def train(dataset, model, hyperparams, device, logDir):
   timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
   trainWriter = SummaryWriter(
-      logDir + '/train'.format(timestamp))
+      logDir + 'train'.format(timestamp))
   valWriter = SummaryWriter(
-      logDir + '/validation'.format(timestamp))
+      logDir + 'validation'.format(timestamp))
 
   optimizer = optim.Adam(model.parameters(), lr=hyperparams.lr)
 
@@ -338,6 +335,7 @@ def predict(model, token, hidden):
   # get the output of the model
   out, hidden = model(inputs, hidden)
 
+  out = F.softmax(out, dim=1)
   sampledIdx = torch.argmax(out, dim=1).item()
 
   # return the encoded value of the predicted char and the hidden state
