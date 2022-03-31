@@ -31,13 +31,15 @@ rectangle "Training data" as data <<$Object>>#BUSINESS
 layer1 -right-> pre
 ingrs -right-> pre
 
-pre -right-> comb
+pre -down-> comb
 comb -down-> quantulum : " element-wise"
 quantulum -right-> struct
 struct -right-> post
-amounts -down-> post
+amounts -down--> post
 
-post --> data
+post -right-> data
+
+amounts -left-> pre
 
 ' Structure
 layer1 -[hidden]right-> ingrs
