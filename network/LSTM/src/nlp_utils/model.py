@@ -13,47 +13,39 @@ from sklearn.metrics import accuracy_score
 from torch import nn
 from transformers import BertModel, DistilBertModel
 
-from nlp_utils.config import create_config
-
+from config import create_config
 
 class EmbedLSTM(pl.LightningModule):
-    def __init__(self, config={}): #hyperParams, dataset):
+    def __init__(self, config={}):
+        super().__init__()
 
-        self.vocab_size = len(dataset.tokenizer.word_index)
-        
         self.config = create_config(config)
         self.save_hyperparameters(self.config)
 
-        # hyperparams
+        self.vocab_size = self.config['vocabSize']
+        
         self.batchSize = self.config['batchSize']
         self.hiddenDim = self.config['hiddenDim']
         self.numLayers = self.config['numLayers']
         self.lr        = self.config['lr']
 
-        self.train_acc = torchmetrics.Accuracy()
-        self.valid_acc = torchmetrics.Accuracy()
 
-
-        self.word_embeddings = nn.Embedding(
-            self.vocab_size, hyperParams.embeddingDim, padding_idx=0)
-        self.lstm = nn.LSTM(input_size=hyperParams.embeddingDim,
+        self.embed = nn.Embedding(
+            self.vocab_size, self.config['embeddingDim'], padding_idx=0)
+        self.lstm = nn.LSTM(input_size=self.config['embeddingDim'],
                             hidden_size=self.hiddenDim, num_layers=self.numLayers, batch_first=True)
         self.linear = nn.Linear(self.hiddenDim, self.vocab_size)
-        self.softmax = nn.Softmax(dim=1)
+
+
+        self.criterion = nn.CrossEntropyLoss()
 
     def forward(self, x):
-        embeds = self.word_embeddings(x)
+        embeds = self.embed(x)
 
-        hidden, cell = self.hidden
-
-        lstm_out, (hidden, cell) = self.lstm(
-            embeds, (hidden.detach(), cell.detach()))
+        lstm_out, self.hidden = self.lstm(
+            embeds, (self.hidden[0].detach(), self.hidden[1].detach()))
 
         out = self.linear(lstm_out.reshape(-1, self.hiddenDim))
-
-        out = self.softmax(out)
-
-        self.hidden = (hidden, cell)
 
         return out
 
@@ -72,13 +64,12 @@ class EmbedLSTM(pl.LightningModule):
         labels = labels.long().view(-1)
 
         # loss computation
-        loss = F.cross_entropy(outputs, labels)
+        loss = self.criterion(outputs, labels)
 
         self.log('train_loss', loss, on_epoch=True)
 
-        self.train_acc(torch.topk(outputs, 1)[1].view(-1), labels)
-        # acc += accuracy_score(predict(outputs).numpy(),
-        #                         labels.numpy())
+        smOut = F.softmax(outputs, dim=1)
+        self.train_acc = accuracy_score(torch.argmax(smOut, dim=1).numpy(), labels.numpy())
 
         self.log('train_acc', self.train_acc, on_epoch=True)
 
@@ -91,32 +82,18 @@ class EmbedLSTM(pl.LightningModule):
         labels = labels.long().view(-1)
 
         # loss computation
-        loss = F.cross_entropy(outputs, labels)
+        loss = self.criterion(outputs, labels)
 
         self.log('val_loss', loss, on_epoch=True)
 
-        self.val_acc(torch.topk(outputs, 1)[1].view(-1), labels)
-        # acc += accuracy_score(predict(outputs).numpy(),
-        #                         labels.numpy())
+        smOut = F.softmax(outputs, dim=1)
+        self.val_acc = accuracy_score(torch.argmax(smOut, dim=1).numpy(), labels.numpy())
 
         self.log('val_acc', self.val_acc, on_epoch=True)
 
-    def predict_step(self, batch, batch_idx):
-        x, y = batch
-        pred = self(x)
-        return pred
-    
-    def train_dataloader(self):
-        return DataLoader(...)
-
-    def val_dataloader(self):
-        return DataLoader(...)
-
-    def test_dataloader(self):
-        return DataLoader(...)
-
-    def prepare_data(self):
-        return 1
+    def predict(self):
+        prediction = 1
+        return prediction
 
     def init_hidden(self, batch_size):
         hidden = torch.zeros(self.numLayers, batch_size,

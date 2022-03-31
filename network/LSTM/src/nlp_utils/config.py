@@ -11,7 +11,8 @@ dataset_default_config = dict(
     ratio=[0.7, 0.3],
     hiddenDim=256,
     numLayers=1,
-    embeddingDim=300
+    embeddingDim=300,
+    vocabSize=0
 )
 
 
