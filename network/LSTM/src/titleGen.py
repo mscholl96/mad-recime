@@ -161,7 +161,7 @@ class EmbedLSTM(nn.Module):
         # definition fully connected layer
         self.linear = nn.Linear(self.hiddenDim, self.vocab_size)
 
-        self.softmax = nn.Softmax(dim=1)
+        # self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x, hidden):
         embeds = self.word_embeddings(x)
@@ -171,7 +171,7 @@ class EmbedLSTM(nn.Module):
 
         out = self.linear(lstm_out.reshape(-1, self.hiddenDim))
 
-        out = self.softmax(out)
+        # out = self.softmax(out)
 
         return out, hidden
 
@@ -242,14 +242,15 @@ def train_epoch(epoch, batchSize, model, optimizer, train_loader, device, writer
 
     # batch prediction
     outputs, hidden = model(inputs, hidden)
-    labels = labels.long()
-    labels = labels.view(-1)
+    labels = labels.long().view(-1)
 
     # loss computation
-    loss = F.cross_entropy(outputs, labels)
+    # loss = F.cross_entropy(outputs, labels)
+    criterion =  nn.CrossEntropyLoss()
+    loss = criterion(outputs, labels)
 
-    outputPred = outPredict(outputs)
-    # print('Out {}, OutPred {}, Lable {}'.format(outputs.shape, outputPred.shape, labels.shape))
+    outputs = F.softmax(outputs,dim=1)
+    outputPred = torch.argmax(outputs, dim=1)
 
     accuracy += accuracy_score(outputPred.cpu().data.numpy(), labels.cpu().data.numpy())
 
@@ -277,29 +278,26 @@ def val_epoch(epoch, batchSize, model, optimizer, val_loader, device, writer):
       # assign inputs and labels to device
       inputs, labels = inputs.to(device), labels.to(device)
 
-      # batch prediction (alternative: forward)
       outputs, hidden = model(inputs, hidden)
-      labels = labels.long()
-      labels = labels.view(-1) # flatten labels to batchSize * seqLength
+      labels = labels.long().view(-1) # flatten labels to batchSize * seqLength
 
       # loss computation
       loss = F.cross_entropy(outputs, labels)
 
-      outputPred = outPredict(outputs)
+      outputPred = torch.argmax(outputs, dim=1)
 
       accuracy += accuracy_score(outputPred.cpu().data.numpy(), labels.cpu().data.numpy())
-
 
       running_loss += loss.item()
   return(running_loss / len(val_loader), accuracy / len(val_loader))
 
 
-def train(dataset, model, hyperparams, device):
+def train(dataset, model, hyperparams, device, logDir):
   timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
   trainWriter = SummaryWriter(
-      '/content/drive/MyDrive/runs/titleTrainer/train'.format(timestamp))
+      logDir + '/train'.format(timestamp))
   valWriter = SummaryWriter(
-      '/content/drive/MyDrive/runs/titleTrainer/validation'.format(timestamp))
+      logDir + '/validation'.format(timestamp))
 
   optimizer = optim.Adam(model.parameters(), lr=hyperparams.lr)
 
@@ -317,7 +315,7 @@ def train(dataset, model, hyperparams, device):
     valLoss, valAcc = val_epoch(epoch, hyperparams.batchSize, model,
                         optimizer, val_loader, device, valWriter)
 
-    print("Epoch: {}, loss: {}, acc: {}".format(epoch+1, trainLoss, trainAcc))
+    print("Epoch: {}, loss: {:10.5f}, acc: {:10.5f}".format(epoch+1, trainLoss, trainAcc))
     trainWriter.add_scalar('loss', trainLoss, epoch)
     trainWriter.add_scalar('acc', trainAcc, epoch)
     valWriter.add_scalar('loss', valLoss, epoch)
@@ -340,38 +338,10 @@ def predict(model, token, hidden):
   # get the output of the model
   out, hidden = model(inputs, hidden)
 
-  sampledIdx = outPredict(out, 1).item()
-  print(sampledIdx)
+  sampledIdx = torch.argmax(out, dim=1).item()
 
   # return the encoded value of the predicted char and the hidden state
   return sampledIdx, hidden
-
-
-def outPredict(modelOutput, n=1):
-  # modelOutput is supposed to be a tensor of size [batchSize * seqLength, vocabSize]
-
-  # token probabilities
-  # smOutput = F.softmax(modelOutput, dim=1).data
-
-  # return idx with highest probability
-  idxPred = torch.topk(modelOutput, n)[1]
-
-  # reshape tensor to [batchSize * seqLength]
-  idxPred = idxPred.view(-1)
-
-  return idxPred
-  # predict = predict.cpu()
-  # predict = predict.numpy()
-  # predict = predict.squeeze()
-
-  # print('out shape {}, predict shape {}'.format(modelOutput.shape, predict.shape))
-
-  # randomly select out of highest n probabilities
-  # idxPredict = np.random.choice(np.argpartition(predict, -n)[-n:])
-  # print('Top1Idx {} TopIdx {}'.format(np.argmax(predict), idxPredict))
-
-  # return idxPredict
-
 
 
 # function to generate text
