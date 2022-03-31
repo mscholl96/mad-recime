@@ -1,0 +1,16 @@
+@startuml Recipe
+
+scale 1000
+class Recipe {
+    id
+    title
+    ingredients : list
+    instructions : list
+    +  __init__(id, title)
+    + get_ingredient_amounts(raw_ingredients)
+    + parse_ingredients(raw_ingredients)
+    + parse_instructions(raw_ingredients)
+    + to_dict()
+}
+
+@enduml
