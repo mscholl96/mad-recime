@@ -1,5 +1,5 @@
 @startuml architecture
-
+scale 1000
 ' Diagram style
 skinparam DefaultTextAlignment center
 skinparam rectangle<<helper>> {
@@ -13,7 +13,7 @@ sprite $Component jar:archimate/application-component
 rectangle "ReciMe application" {
     rectangle "**Conditional Variational**\n**Autoencoder Network**" as cvae <<$Network>>#APPLICATION
     rectangle "List of ingredients"  as Ingredients <<$Object>>#BUSINESS
-    rectangle "Generated Recipe"  as recipe <<$Object>>#BUSINESS
+    rectangle "**Generated Recipe**"  as recipe <<$Object>>#BUSINESS
     rectangle "List of instructions"  as instructions <<$Object>>#BUSINESS
     rectangle "Title"  as rtitle <<$Object>>#BUSINESS
     rectangle "**Title generating**\n**LSTM**" as tlstm <<$Network>>#APPLICATION
@@ -22,24 +22,25 @@ rectangle "ReciMe application" {
 }
 rectangle "Data preparation" {
     rectangle "Training data" as train <<$Object>>
-    rectangle "Recipe1M data" as raw <<$Object>>
+    rectangle "Recipe1M+ data" as raw <<$Object>>
     rectangle "**Data parser**" as parser <<$Component>><<helper>>
 }
 
 ' Connections
 raw .right.> parser
 parser .down.> train
-train .right.> cvae
-train .right.> ilstm
+train .right..> cvae
 train .right.> tlstm
+train .right..> ilstm
 input -down-> cvae
 cvae -right-> Ingredients
 Ingredients -down-> tlstm
 Ingredients -down-> ilstm
-rtitle -down-> recipe
+rtitle -right-> recipe
 Ingredients -> recipe
-instructions -> recipe
-tlstm -down-> rtitle
+instructions -up-> recipe
+tlstm -right-> rtitle
 ilstm -right-> instructions
+rtitle -down-> ilstm
 
 @enduml
