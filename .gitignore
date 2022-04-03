@@ -137,3 +137,10 @@ dmypy.json
 
 # Images
 *.png
+
+# Latex
+*.pdf
+*.aux
+
+# Don't ignore .coveragerc file
+!.coveragerc
