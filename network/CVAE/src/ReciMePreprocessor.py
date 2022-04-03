@@ -29,7 +29,7 @@ class ReciMePreprocessor:
         embedding = np.zeros((20, len(dictionary)))
 
         for index in range(0, len(values)):
-            embedding[index][dictionary[values[index]] - 1] = 1
+            embedding[index][dictionary[values[index]]] = 1
 
         return embedding.flatten()
 
@@ -135,7 +135,7 @@ class ReciMePreprocessor:
             for index in indexTransformed:
                 if index in dictionary.values():
                     rowString.append(
-                        list(dictionary.keys())[list(dictionary.values()).index(index)]
+                        list(dictionary.keys())[index]
                     )
                 else:
                     rowString.append("")
@@ -153,7 +153,7 @@ class ReciMePreprocessor:
                 index = nearest.item()
                 if index:
                     outputRows.append(
-                        list(dictionary.keys())[list(dictionary.values()).index(index)]
+                        list(dictionary.keys())[list(dictionary.values()).index(index)].replace("_", " ")
                     )
                 else:
                     outputRows.append("")

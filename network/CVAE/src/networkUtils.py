@@ -19,7 +19,7 @@ class DataBuilder(torch.utils.data.Dataset):
     def customCollate(self, batch):
         unzippedBatch = []
         for elem in batch:
-            unzippedBatch.append(elem.values[0])
+            unzippedBatch.append(elem)
         seriesConcat = pd.Series(unzippedBatch, name="ingredients")
         processedData = self.preProcessor.preProcessInput(seriesConcat)
         normalizedData = self.preProcessor.normalizeData(processedData)
@@ -58,9 +58,9 @@ def train(
     for batch_idx, data in enumerate(trainloader):
         optimizer.zero_grad()
         if conditional:
-            conditional = trainloader.dataset.preProcessor.getConditional(data).to(device)
+            cond = trainloader.dataset.preProcessor.getConditional(data).to(device)
             data = data.to(device)
-            recon_batch, mu, logvar = model(data, conditional)
+            recon_batch, mu, logvar = model(data, cond)
         else:
             data = data.to(device)
             recon_batch, mu, logvar = model(data)
@@ -104,9 +104,9 @@ def test(
         for batch_idx, data in enumerate(testloader):
             optimizer.zero_grad()
             if conditional:
-                conditional = testloader.dataset.preProcessor.getConditional(data).to(device)
+                cond = testloader.dataset.preProcessor.getConditional(data).to(device)
                 data = data.to(device)
-                recon_batch, mu, logvar = model(data, conditional)
+                recon_batch, mu, logvar = model(data, cond)
             else:
                 data = data.to(device)
                 recon_batch, mu, logvar = model(data)
