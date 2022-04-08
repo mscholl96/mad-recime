@@ -197,13 +197,13 @@ class TitleDataModule(pl.LightningDataModule):
             titleSet, [trainNum, valNum], generator=torch.Generator().manual_seed(0))
 
     def train_dataloader(self):
-        return DataLoader(self.trainSet, shuffle=False, batch_size=self.batch_size, num_workers=self.num_workers)
+        return DataLoader(self.trainSet, shuffle=False, batch_size=self.batch_size, num_workers=self.num_workers,  drop_last=True)
 
     def val_dataloader(self):
-        return DataLoader(self.valSet, shuffle=False, batch_size=self.batch_size, num_workers=self.num_workers)
+        return DataLoader(self.valSet, shuffle=False, batch_size=self.batch_size, num_workers=self.num_workers,  drop_last=True)
 
     def test_dataloader(self):
-        return DataLoader(self.testSet, shuffle=False, batch_size=self.batch_size, num_workers=self.num_workers)
+        return DataLoader(self.testSet, shuffle=False, batch_size=self.batch_size, num_workers=self.num_workers,  drop_last=True)
 
     # def predict_dataloader(self):
     #     return DataLoader(self.predictSet, batch_size=self.batch_size)

@@ -29,6 +29,7 @@ class EmbedLSTM(pl.LightningModule):
         self.numLayers = self.config['numLayers']
         self.lr        = self.config['lr']
 
+        self.hidden    = None
 
         self.embed = nn.Embedding(
             self.vocab_size, self.config['embeddingDim'], padding_idx=0)
@@ -54,7 +55,10 @@ class EmbedLSTM(pl.LightningModule):
         lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1)
         return [optimizer], [lr_scheduler]
 
-    def on_epoch_start(self):
+    def on_train_epoch_start(self):
+        self.hidden = self.init_hidden(self.batchSize)
+
+    def on_validation_epoch_start(self):
         self.hidden = self.init_hidden(self.batchSize)
 
     def training_step(self, batch, batch_idx):
@@ -97,7 +101,7 @@ class EmbedLSTM(pl.LightningModule):
 
     def init_hidden(self, batch_size):
         hidden = torch.zeros(self.numLayers, batch_size,
-                             self.hiddenDim).to(self.device)
+                             self.hiddenDim, device=self.device)
         cell = torch.zeros(self.numLayers, batch_size,
-                           self.hiddenDim).to(self.device)
+                           self.hiddenDim, device=self.device)
         return hidden, cell

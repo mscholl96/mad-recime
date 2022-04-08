@@ -9,7 +9,7 @@ setup(
     description="helper lib",
     packages=["nlp_utils"],
     package_data={},
-    long_description_content_type="text/markdown",
-    long_description=""" helper lib """,
-    install_requires=["pandas>=1.2.4"],
+    # long_description_content_type="text/markdown",
+    # long_description=""" helper lib """,
+    # install_requires=["pandas>=1.2.4"],
 )
