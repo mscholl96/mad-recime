@@ -1,5 +1,5 @@
 @startuml parsing-architecture
-
+scale 1000
 ' Diagram style
 skinparam DefaultTextAlignment center
 
